@@ -47,3 +47,9 @@ C?pia do projeto/
 # Ferramentas locais temporarias
 atualizar.py
 gerarcontexto.py
+
+# Arquivos locais de contexto e backup
+.backups_atualizar/
+ZProjetoCompleto.txt
+NOSSOCONHECIMENTO.md
+
