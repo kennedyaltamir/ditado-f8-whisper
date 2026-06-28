@@ -1,0 +1,36 @@
+# Whisper binaries/modelos grandes
+whisper-bin-x64/
+*.bin
+*.zip
+
+# Gravações e testes locais
+gravacoes_ditado/
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.ogg
+
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ambiente virtual
+venv/
+.venv/
+
+# Logs e temporários
+*.log
+*.tmp
+*.bak
+
+# Arquivos locais do Windows
+Thumbs.db
+desktop.ini
+
+# VS Code local
+.vscode/
+# Hist�rico local do VS Code
+.history/
