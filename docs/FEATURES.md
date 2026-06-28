@@ -2,10 +2,14 @@
 
 Este documento lista estritamente as funcionalidades **já implementadas, preparadas para validação e em funcionamento** no ambiente local do usuário (no arquivo `ditado_f8_widget.py`).
 
-## 1. Interface Gráfica Premium
+## 1. Interface Gráfica Premium e Controles Visuais (Fase 2)
 * Janela customizada "Borderless" (sem as bordas padrão do Windows).
 * Funcionalidade de arrastar a janela clicando no fundo.
 * Botões superiores de Minimizar, Fechar e **Configurações (⚙)** embutidos na interface.
+* **Botão Visual de Gravação:** Permite iniciar e parar a gravação diretamente pelo mouse, funcionando como um toggle independente da configuração da hotkey.
+* **Botão de Cancelamento Visual:** Permite abortar a gravação em andamento com um clique.
+* **Contador de Tempo:** Exibe a duração da gravação em tempo real (`MM:SS`).
+* **Indicador de Volume:** Barra visual (`████░░░░`) que reage à captação do microfone em tempo real.
 * Status visual na tela atualizado dinamicamente.
 * Exibição na tela do último texto transcrito.
 * Exibição do nome do último arquivo de áudio e último arquivo de texto gerados.

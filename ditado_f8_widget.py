@@ -89,7 +89,8 @@ class DitadoWidget:
 
         self.root = root
         self.root.title("Ditado F8 Whisper")
-        self.root.geometry("560x345+1280+80")
+        # Altura aumentada de 345 para 410 para acomodar os novos controles
+        self.root.geometry("560x410+1280+80")
         self.root.configure(bg=BG_TRANSPARENT)
         self.root.attributes("-topmost", self.config.get("always_on_top", True))
         self.root.resizable(False, False)
@@ -114,13 +115,15 @@ class DitadoWidget:
         self.cancel_hotkey = self.config.get("cancel_hotkey", "esc").lower()
         self.recording_mode = self.config.get("recording_mode", "hold")
         
-        mode_str = "Segurar" if self.recording_mode == "hold" else "Toggle"
         self.ready_text = "Aguardando comando de voz..."
 
         self.status_var = tk.StringVar(value="Pronto")
         self.detail_var = tk.StringVar(value=self.ready_text)
         self.last_text_var = tk.StringVar(value="Último texto: nenhum")
         self.last_file_var = tk.StringVar(value="Nenhum teste salvo ainda")
+        
+        self.timer_var = tk.StringVar(value="00:00")
+        self.volume_var = tk.StringVar(value="Volume: ░░░░░░░░")
         
         mic_name = self.config.get("microphone_name_contains", "Iriun")
         self.mic_var = tk.StringVar(value=f"Microfone: {mic_name}")
@@ -146,6 +149,12 @@ class DitadoWidget:
         self.drag_start_y = 0
         
         self.settings_window = None
+        
+        # Variáveis de controle de UI (Timer e Volume)
+        self.recording_start_time = 0
+        self.timer_job = None
+        self.volume_job = None
+        self.current_volume = 0.0
 
         self.build_ui()
         self.register_hotkeys()
@@ -165,7 +174,7 @@ class DitadoWidget:
         self.canvas = tk.Canvas(
             self.root,
             width=560,
-            height=345,
+            height=410,
             bg=BG_TRANSPARENT,
             highlightthickness=0,
             bd=0
@@ -175,18 +184,19 @@ class DitadoWidget:
         self.draw_rounded_card()
 
         self.card = tk.Frame(self.root, bg=BG_CARD)
-        self.card.place(x=14, y=14, width=532, height=317)
+        self.card.place(x=14, y=14, width=532, height=382)
 
         self.build_header()
         self.build_status_area()
+        self.build_record_controls()
         self.build_last_text_area()
         self.build_buttons()
 
     def draw_rounded_card(self):
-        # Sombra/Borda Externa
-        self.round_rectangle(10, 10, 550, 335, radius=24, fill="#05070c", outline="")
+        # Sombra/Borda Externa (ajustado para altura 410)
+        self.round_rectangle(10, 10, 550, 400, radius=24, fill="#05070c", outline="")
         # Fundo Principal
-        self.round_rectangle(14, 14, 546, 331, radius=22, fill=BG_CARD, outline="#263244")
+        self.round_rectangle(14, 14, 546, 396, radius=22, fill=BG_CARD, outline="#263244")
         # Fundo do Cabeçalho
         self.round_rectangle(14, 14, 546, 82, radius=22, fill=BG_CARD_2, outline="")
         self.canvas.create_rectangle(14, 58, 546, 82, fill=BG_CARD_2, outline="")
@@ -239,7 +249,6 @@ class DitadoWidget:
         controls = tk.Frame(self.header, bg=BG_CARD_2)
         controls.pack(side="right", padx=10, pady=10)
         
-        # Botão de Configurações
         cfg_btn = self.make_window_button(controls, "⚙", self.open_settings)
         cfg_btn.pack(side="left", padx=(0, 6))
 
@@ -283,7 +292,6 @@ class DitadoWidget:
         )
         self.status_label.pack(anchor="w")
 
-        # Container para os detalhes e badges
         detail_container = tk.Frame(status_text_frame, bg=BG_CARD)
         detail_container.pack(anchor="w", fill="x", pady=(2, 0))
 
@@ -293,12 +301,50 @@ class DitadoWidget:
         )
         self.detail_label.pack(side="left")
         
-        # Badge visual para hotkey/mode
         badge = tk.Label(
             detail_container, textvariable=self.badge_var, fg="#388bfd",
             bg="#182333", font=("Segoe UI", 8, "bold"), padx=6, pady=2
         )
         badge.pack(side="left", padx=(10, 0))
+
+    def build_record_controls(self):
+        # Painel central com Botão Gravar, Cancelar, Timer e Volume
+        ctrl_frame = tk.Frame(self.card, bg="#161b26", padx=10, pady=10)
+        ctrl_frame.pack(fill="x", padx=18, pady=(15, 0))
+        
+        # Botões à esquerda
+        btn_area = tk.Frame(ctrl_frame, bg="#161b26")
+        btn_area.pack(side="left")
+        
+        self.btn_record = tk.Button(
+            btn_area, text="🎙 Gravar", command=self.toggle_recording_from_button,
+            bg="#238636", fg="white", activebackground="#2ea043", activeforeground="white",
+            relief="flat", font=("Segoe UI", 11, "bold"), cursor="hand2", width=12, pady=4
+        )
+        self.btn_record.pack(side="left", padx=(0, 8))
+        
+        self.btn_cancel = tk.Button(
+            btn_area, text="Cancelar", command=self.cancel_recording,
+            bg="#21262d", fg="#f85149", activebackground="#30363d", activeforeground="#ff7b72",
+            relief="flat", font=("Segoe UI", 9, "bold"), cursor="hand2", width=8, pady=5, state="disabled"
+        )
+        self.btn_cancel.pack(side="left")
+
+        # Info à direita (Timer e Volume)
+        info_area = tk.Frame(ctrl_frame, bg="#161b26")
+        info_area.pack(side="right", fill="y")
+        
+        self.lbl_timer = tk.Label(
+            info_area, textvariable=self.timer_var, fg="white",
+            bg="#161b26", font=("Consolas", 14, "bold")
+        )
+        self.lbl_timer.pack(anchor="e")
+        
+        self.lbl_volume = tk.Label(
+            info_area, textvariable=self.volume_var, fg=COLOR_MUTED,
+            bg="#161b26", font=("Consolas", 9)
+        )
+        self.lbl_volume.pack(anchor="e")
 
     def build_last_text_area(self):
         area = tk.Frame(self.card, bg=BG_CARD)
@@ -664,6 +710,68 @@ class DitadoWidget:
             self.set_status("Sem texto", "Nenhum texto para copiar", "#ffaa00")
 
     # ==========================================================
+    # Controle do Botão Gravar, Timer e Volume
+    # ==========================================================
+
+    def toggle_recording_from_button(self):
+        if self.is_processing:
+            return
+        if self.is_recording:
+            self.stop_and_process()
+        else:
+            self.start_recording()
+
+    def update_record_button_ui(self):
+        if self.is_processing:
+            self.btn_record.config(text="Processando...", bg="#21262d", fg=COLOR_MUTED, state="disabled")
+            self.btn_cancel.config(state="disabled")
+        elif self.is_recording:
+            self.btn_record.config(text="⏹ Parar", bg="#da3633", fg="white", state="normal", activebackground="#b62324")
+            self.btn_cancel.config(state="normal")
+        else:
+            self.btn_record.config(text="🎙 Gravar", bg="#238636", fg="white", state="normal", activebackground="#2ea043")
+            self.btn_cancel.config(state="disabled")
+
+    def start_ui_loops(self):
+        self.recording_start_time = time.time()
+        self.update_timer()
+        self.update_volume()
+
+    def stop_ui_loops(self):
+        if self.timer_job:
+            self.root.after_cancel(self.timer_job)
+            self.timer_job = None
+        if self.volume_job:
+            self.root.after_cancel(self.volume_job)
+            self.volume_job = None
+            
+        self.timer_var.set("00:00")
+        self.volume_var.set("Volume: ░░░░░░░░")
+        self.current_volume = 0.0
+
+    def update_timer(self):
+        if not self.is_recording:
+            return
+            
+        elapsed = int(time.time() - self.recording_start_time)
+        mins, secs = divmod(elapsed, 60)
+        self.timer_var.set(f"{mins:02d}:{secs:02d}")
+        
+        self.timer_job = self.root.after(1000, self.update_timer)
+
+    def update_volume(self):
+        if not self.is_recording:
+            return
+            
+        # Mapeia o volume (RMS) para 8 níveis visuais
+        # Multiplicador 20 ajusta a sensibilidade visual
+        level = int(min(self.current_volume * 20, 1.0) * 8)
+        bar = "█" * level + "░" * (8 - level)
+        self.volume_var.set(f"Volume: {bar}")
+        
+        self.volume_job = self.root.after(100, self.update_volume)
+
+    # ==========================================================
     # Sons
     # ==========================================================
 
@@ -693,6 +801,7 @@ class DitadoWidget:
 
         self.is_recording = True
         self.frames = []
+        self.current_volume = 0.0
 
         if self.recording_mode == "hold":
             detail = f"Solte {self.hotkey.upper()} p/ transcrever | {self.cancel_hotkey.upper()} cancela"
@@ -700,11 +809,16 @@ class DitadoWidget:
             detail = f"Aperte {self.hotkey.upper()} novam. p/ transcrever | {self.cancel_hotkey.upper()} cancela"
 
         self.set_status("Gravando...", detail, COLOR_RECORDING)
+        self.update_record_button_ui()
+        self.start_ui_loops()
         self.beep_start()
 
         def callback(indata, frames_count, time_info, status):
             if self.is_recording:
                 self.frames.append(indata.copy())
+                # Calcula o RMS (Root Mean Square) para o indicador de volume
+                rms = float(np.sqrt(np.mean(indata**2)))
+                self.current_volume = rms
 
         try:
             self.stream = sd.InputStream(
@@ -719,6 +833,8 @@ class DitadoWidget:
         except Exception as e:
             self.is_recording = False
             self.stream = None
+            self.stop_ui_loops()
+            self.update_record_button_ui()
             self.set_status("Erro", str(e), COLOR_ERROR)
             self.beep_error()
 
@@ -727,6 +843,7 @@ class DitadoWidget:
             return
 
         self.is_recording = False
+        self.stop_ui_loops()
 
         try:
             if self.stream is not None:
@@ -737,12 +854,14 @@ class DitadoWidget:
             pass
 
         if not self.frames:
+            self.update_record_button_ui()
             self.set_status("Pronto", self.ready_text, COLOR_READY)
             return
 
         audio_data = np.concatenate(self.frames, axis=0)
 
         self.is_processing = True
+        self.update_record_button_ui()
         self.set_status("Carregando sua voz...", "Transcrevendo e salvando...", COLOR_PROCESSING)
         self.beep_end()
 
@@ -757,6 +876,7 @@ class DitadoWidget:
             return
 
         self.is_recording = False
+        self.stop_ui_loops()
 
         try:
             if self.stream is not None:
@@ -767,6 +887,7 @@ class DitadoWidget:
             pass
             
         self.frames = []
+        self.update_record_button_ui()
         self.set_status("Cancelado", "Gravação cancelada e descartada", COLOR_ERROR)
         self.beep_error()
         
@@ -873,6 +994,7 @@ class DitadoWidget:
 
         finally:
             self.is_processing = False
+            self.root.after(0, self.update_record_button_ui)
 
     # ==========================================================
     # Fechamento

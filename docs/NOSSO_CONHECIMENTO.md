@@ -4,6 +4,14 @@ Este arquivo funciona como a memória histórica e registro de decisões arquite
 
 ---
 
+### Registro 5: Implementação Fase 2 (Usabilidade e Feedback Visual) - Preparada para validação
+* **Botão Visual de Gravação:** Implementado um botão "Gravar/Parar" na interface. Arquiteturalmente, ele reaproveita os métodos `start_recording` e `stop_and_process`, funcionando como um "toggle" por clique, independentemente de a hotkey estar configurada como `hold` ou `toggle`.
+* **Thread Safety no Tkinter (Timer e Volume):** Para evitar travamentos na interface, o contador de tempo e o indicador de volume foram implementados utilizando o método `root.after()`. 
+* **Cálculo de Volume (RMS):** O indicador de volume não atualiza a UI diretamente de dentro do callback do `sounddevice` (o que causaria falhas de thread). Em vez disso, o callback apenas calcula o RMS (Root Mean Square) do frame de áudio atual e salva em uma variável float (`self.current_volume`). O loop do Tkinter (`root.after`) lê essa variável a cada 100ms e desenha a barra visual.
+* **Preparação para o Futuro:** As Fases 3 (Histórico e Organização por Data) e 4 (Modo Compacto) foram intencionalmente postergadas e mantidas apenas na documentação para garantir a estabilidade desta entrega focada em usabilidade.
+
+---
+
 ### Registro 4: Implementação Fase 1C (Aplicação Dinâmica de Configurações) - Preparada para validação
 * **Recarregamento de Hooks Globais:** A substituição das configurações de tecla no front-end foi atualizada para alterar o comportamento em tempo real, livrando o usuário da necessidade de reiniciar o aplicativo. Isso foi feito implementando métodos dedicados (`unregister_hotkeys` e `register_hotkeys`), que removem seguramente a escuta global do módulo `keyboard` e reativam com as novas variáveis.
 * **Prevenção de Estado Inconsistente:** Alterações de configuração e chamadas ao JSON estão estritamente bloqueadas se a aplicação estiver no estado de gravação (`is_recording`) ou transcrição (`is_processing`). Além disso, as variáveis de tracking do toggle (`is_hotkey_pressed`) são resetadas a cada `register_hotkeys()` para garantir um ciclo limpo a partir de mudanças da interface.
