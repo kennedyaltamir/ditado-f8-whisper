@@ -89,8 +89,8 @@ class DitadoWidget:
 
         self.root = root
         self.root.title("Ditado F8 Whisper")
-        # Altura aumentada de 345 para 410 para acomodar os novos controles
-        self.root.geometry("560x410+1280+80")
+        # Altura aumentada de 410 para 550 para acomodar o histórico
+        self.root.geometry("560x550+1280+80")
         self.root.configure(bg=BG_TRANSPARENT)
         self.root.attributes("-topmost", self.config.get("always_on_top", True))
         self.root.resizable(False, False)
@@ -156,6 +156,11 @@ class DitadoWidget:
         self.volume_job = None
         self.current_volume = 0.0
 
+        # Variáveis do Histórico (Fase 3A)
+        self.history_items = []
+        self.max_history_items = 10
+        self.visible_history_items = 3
+
         self.build_ui()
         self.register_hotkeys()
 
@@ -174,7 +179,7 @@ class DitadoWidget:
         self.canvas = tk.Canvas(
             self.root,
             width=560,
-            height=410,
+            height=550,
             bg=BG_TRANSPARENT,
             highlightthickness=0,
             bd=0
@@ -184,19 +189,20 @@ class DitadoWidget:
         self.draw_rounded_card()
 
         self.card = tk.Frame(self.root, bg=BG_CARD)
-        self.card.place(x=14, y=14, width=532, height=382)
+        self.card.place(x=14, y=14, width=532, height=522)
 
         self.build_header()
         self.build_status_area()
         self.build_record_controls()
         self.build_last_text_area()
+        self.build_history_area()
         self.build_buttons()
 
     def draw_rounded_card(self):
-        # Sombra/Borda Externa (ajustado para altura 410)
-        self.round_rectangle(10, 10, 550, 400, radius=24, fill="#05070c", outline="")
+        # Sombra/Borda Externa (ajustado para altura 550)
+        self.round_rectangle(10, 10, 550, 540, radius=24, fill="#05070c", outline="")
         # Fundo Principal
-        self.round_rectangle(14, 14, 546, 396, radius=22, fill=BG_CARD, outline="#263244")
+        self.round_rectangle(14, 14, 546, 536, radius=22, fill=BG_CARD, outline="#263244")
         # Fundo do Cabeçalho
         self.round_rectangle(14, 14, 546, 82, radius=22, fill=BG_CARD_2, outline="")
         self.canvas.create_rectangle(14, 58, 546, 82, fill=BG_CARD_2, outline="")
@@ -308,11 +314,9 @@ class DitadoWidget:
         badge.pack(side="left", padx=(10, 0))
 
     def build_record_controls(self):
-        # Painel central com Botão Gravar, Cancelar, Timer e Volume
         ctrl_frame = tk.Frame(self.card, bg="#161b26", padx=10, pady=10)
         ctrl_frame.pack(fill="x", padx=18, pady=(15, 0))
         
-        # Botões à esquerda
         btn_area = tk.Frame(ctrl_frame, bg="#161b26")
         btn_area.pack(side="left")
         
@@ -330,7 +334,6 @@ class DitadoWidget:
         )
         self.btn_cancel.pack(side="left")
 
-        # Info à direita (Timer e Volume)
         info_area = tk.Frame(ctrl_frame, bg="#161b26")
         info_area.pack(side="right", fill="y")
         
@@ -361,6 +364,122 @@ class DitadoWidget:
             font=("Segoe UI", 8), justify="left", anchor="w", wraplength=500
         )
         self.last_file_label.pack(anchor="w", fill="x", pady=(4, 0))
+
+    # ==========================================================
+    # Área de Histórico (Fase 3A)
+    # ==========================================================
+
+    def build_history_area(self):
+        self.history_frame = tk.Frame(self.card, bg=BG_CARD)
+        self.history_frame.pack(fill="x", padx=18, pady=(10, 0))
+
+        header_frame = tk.Frame(self.history_frame, bg=BG_CARD)
+        header_frame.pack(fill="x")
+
+        lbl_title = tk.Label(
+            header_frame, text="Últimos ditados", fg="white", 
+            bg=BG_CARD, font=("Segoe UI", 10, "bold")
+        )
+        lbl_title.pack(side="left")
+
+        btn_clear = tk.Button(
+            header_frame, text="Limpar", command=self.clear_history, 
+            bg=BG_CARD, fg=COLOR_MUTED, relief="flat", font=("Segoe UI", 8, "underline"), 
+            cursor="hand2", activebackground=BG_CARD, activeforeground="white", bd=0
+        )
+        btn_clear.pack(side="right")
+
+        self.history_list_frame = tk.Frame(self.history_frame, bg=BG_CARD)
+        self.history_list_frame.pack(fill="x", pady=(5, 0))
+
+        self.render_history()
+
+    def render_history(self):
+        # Limpa os widgets antigos
+        for widget in self.history_list_frame.winfo_children():
+            widget.destroy()
+
+        if not self.history_items:
+            lbl_empty = tk.Label(
+                self.history_list_frame, text="Nenhum ditado recente nesta sessão.", 
+                fg=COLOR_MUTED, bg=BG_CARD, font=("Segoe UI", 9, "italic")
+            )
+            lbl_empty.pack(anchor="w", pady=5)
+            return
+
+        # Renderiza até o limite visível
+        for i, item in enumerate(self.history_items[:self.visible_history_items]):
+            row = tk.Frame(self.history_list_frame, bg="#161b26", pady=4, padx=8)
+            row.pack(fill="x", pady=2)
+
+            text = item["text"]
+            preview = text if len(text) <= 55 else text[:55] + "..."
+
+            lbl_text = tk.Label(
+                row, text=f"{i+1}. {preview}", fg=COLOR_TEXT, 
+                bg="#161b26", font=("Segoe UI", 9), anchor="w"
+            )
+            lbl_text.pack(side="left", fill="x", expand=True)
+
+            btn_frame = tk.Frame(row, bg="#161b26")
+            btn_frame.pack(side="right")
+
+            # Passando o item via default argument no lambda para evitar bugs de closure
+            self.make_small_btn(btn_frame, "Copiar", lambda it=item: self.copy_history_item(it)).pack(side="left", padx=2)
+            self.make_small_btn(btn_frame, "TXT", lambda it=item: self.open_history_txt(it)).pack(side="left", padx=2)
+            self.make_small_btn(btn_frame, "Usar", lambda it=item: self.use_history_item(it)).pack(side="left", padx=2)
+
+    def make_small_btn(self, parent, text, command):
+        btn = tk.Button(
+            parent, text=text, command=command, bg="#21262d", fg="white", 
+            activebackground="#30363d", activeforeground="white", relief="flat", 
+            font=("Segoe UI", 8), cursor="hand2", padx=4, pady=2
+        )
+        return btn
+
+    def add_history_item(self, text, wav_path, txt_path):
+        item = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "text": text,
+            "wav_path": wav_path,
+            "txt_path": txt_path,
+        }
+        
+        def update():
+            self.history_items.insert(0, item)
+            self.history_items = self.history_items[:self.max_history_items]
+            self.render_history()
+            
+        self.root.after(0, update)
+
+    def copy_history_item(self, item):
+        pyperclip.copy(item["text"])
+        self.set_status("Histórico copiado", "Texto copiado para a área de transferência", COLOR_SUCCESS)
+        self.root.after(1500, lambda: self.set_status("Pronto", self.ready_text, COLOR_READY))
+
+    def open_history_txt(self, item):
+        if os.path.exists(item["txt_path"]):
+            os.startfile(item["txt_path"])
+        else:
+            self.set_status("Erro", "Arquivo TXT não encontrado", COLOR_ERROR)
+            self.root.after(1500, lambda: self.set_status("Pronto", self.ready_text, COLOR_READY))
+
+    def use_history_item(self, item):
+        self.set_last_text(item["text"])
+        self.set_last_file(item["wav_path"], item["txt_path"])
+        pyperclip.copy(item["text"])
+        self.set_status("Texto reutilizado", "Enviado para a área de transferência", COLOR_SUCCESS)
+        self.root.after(1500, lambda: self.set_status("Pronto", self.ready_text, COLOR_READY))
+
+    def clear_history(self):
+        self.history_items.clear()
+        self.render_history()
+        self.set_status("Histórico limpo", "A lista em memória foi apagada", COLOR_SUCCESS)
+        self.root.after(1500, lambda: self.set_status("Pronto", self.ready_text, COLOR_READY))
+
+    # ==========================================================
+    # Botões Inferiores
+    # ==========================================================
 
     def build_buttons(self):
         btn_frame = tk.Frame(self.card, bg=BG_CARD)
@@ -974,6 +1093,9 @@ class DitadoWidget:
                 return
 
             self.set_last_text(text)
+            
+            # Adiciona ao histórico em memória (Fase 3A)
+            self.add_history_item(text, wav_path, txt_path)
 
             if self.config.get("auto_paste", True):
                 pyperclip.copy(text)

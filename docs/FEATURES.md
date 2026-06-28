@@ -15,7 +15,14 @@ Este documento lista estritamente as funcionalidades **já implementadas, prepar
 * Exibição do nome do último arquivo de áudio e último arquivo de texto gerados.
 * Exibição em **Badge (Destaque)** da Hotkey atual e do Modo de Gravação no painel de status do widget.
 
-## 2. Interface de Configurações (Fase 1B e 1C)
+## 2. Histórico Recente de Ditados (Fase 3A)
+* **Lista em Memória:** O widget exibe os últimos 3 ditados realizados na sessão atual.
+* **Ação Copiar:** Permite copiar rapidamente o texto de um ditado anterior para a área de transferência.
+* **Ação TXT:** Abre o arquivo `.txt` correspondente ao ditado selecionado.
+* **Ação Usar:** Reutiliza o texto, definindo-o como o "Último texto" ativo e copiando-o para a área de transferência.
+* **Limpar Histórico:** Botão para limpar a lista visual da sessão atual (sem apagar os arquivos do disco).
+
+## 3. Interface de Configurações (Fase 1B e 1C)
 * Janela de configurações acessível diretamente no Widget.
 * Permite modificar a tecla de ativação (`f8`, `f9`, `ctrl+space`, etc).
 * Permite modificar o Modo de Gravação (Segurar para falar ou Apertar para iniciar/parar).
@@ -26,13 +33,13 @@ Este documento lista estritamente as funcionalidades **já implementadas, prepar
 * Validações ativas impedem edições durante gravações ou caso teclas conflitantes sejam selecionadas.
 * Botão para Salvar e Botão para Abrir o `config.json` manualmente.
 
-## 3. Ações do Widget (Botões)
+## 4. Ações do Widget (Botões)
 * **Abrir Pasta:** Abre imediatamente a pasta de gravações (configurável).
 * **Ouvir Áudio:** Toca o último arquivo `.wav` gravado pelo usuário.
 * **Abrir TXT:** Abre o último arquivo `.txt` gerado no editor padrão do Windows.
 * **Copiar Texto:** Joga o conteúdo transcrito novamente na área de transferência.
 
-## 4. Motor de Gravação e Atalhos Globais
+## 5. Motor de Gravação e Atalhos Globais
 * Arquivo `config.json` atuando como central de configuração do comportamento da aplicação.
 * Tecla de atalho principal flexível configurável via Interface/JSON.
 * **Modo Hold (Segurar):** A gravação ocorre exclusivamente enquanto a tecla está sendo pressionada.
@@ -40,11 +47,11 @@ Este documento lista estritamente as funcionalidades **já implementadas, prepar
 * **Cancelamento (Esc):** Possibilidade de interromper uma gravação e descartar o áudio instantaneamente, abortando a chamada ao motor do Whisper. Inclui trava segura para o modo `hold`.
 * Arquivos salvos rigorosamente no padrão de timestamp: `YYYYMMDD_HHMMSS.wav` e `YYYYMMDD_HHMMSS.txt`.
 
-## 5. Orquestração do Whisper e Colagem
+## 6. Orquestração do Whisper e Colagem
 * Chamada do executável `whisper-cli.exe` em uma Thread secundária para não travar o loop do `tkinter`.
 * Parsing do `stdout/stderr` do Whisper feito pelo Python.
 * Cópia do texto tratado para a área de transferência do Windows (`pyperclip`).
 * Execução automatizada de `Ctrl+V` para colar o texto onde o cursor do usuário estiver posicionado (controlável pela configuração `auto_paste`).
 
-## 6. Inicialização Limpa
+## 7. Inicialização Limpa
 * Inicialização silenciosa via arquivo `Iniciar Ditado F8 Widget.vbs` executando o `pythonw.exe`.

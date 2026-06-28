@@ -4,6 +4,14 @@ Este arquivo funciona como a memória histórica e registro de decisões arquite
 
 ---
 
+### Registro 6: Implementação Fase 3A (Histórico Recente em Memória) - Preparada para validação
+* **Histórico em Memória:** Implementada uma lista visual dos últimos ditados da sessão atual. A lista é mantida estritamente em memória (`self.history_items`), sem a utilização de SQLite ou persistência complexa nesta fase.
+* **Segurança de Arquivos:** O botão "Limpar" apaga apenas a lista visual da interface. Ele foi projetado para **nunca** deletar os arquivos `.wav` ou `.txt` gerados no disco, garantindo a integridade dos dados do usuário.
+* **Thread Safety na UI:** A adição de novos itens ao histórico ocorre logo após a transcrição (que roda em uma thread secundária). Para evitar travamentos no Tkinter, a atualização da lista e a renderização dos novos widgets são envelopadas em uma função e despachadas para a thread principal usando `self.root.after(0, update)`.
+* **Prevenção de Bugs de Closure (Lambda):** Os botões de ação de cada item do histórico (Copiar, TXT, Usar) utilizam o padrão `lambda it=item: self.action(it)` para garantir que cada botão referencie corretamente o seu respectivo item, evitando o clássico bug de loop do Python onde todos os botões apontariam para o último elemento.
+
+---
+
 ### Registro 5: Implementação Fase 2 (Usabilidade e Feedback Visual) - Preparada para validação
 * **Botão Visual de Gravação:** Implementado um botão "Gravar/Parar" na interface. Arquiteturalmente, ele reaproveita os métodos `start_recording` e `stop_and_process`, funcionando como um "toggle" por clique, independentemente de a hotkey estar configurada como `hold` ou `toggle`.
 * **Thread Safety no Tkinter (Timer e Volume):** Para evitar travamentos na interface, o contador de tempo e o indicador de volume foram implementados utilizando o método `root.after()`. 

@@ -15,11 +15,11 @@ O desenvolvimento do Ditado F8 Whisper está estruturado em fases. A IA deve sem
 * **Fase 2C - Indicador de Volume:** Adicionada barra visual que reage à captação do microfone.
 * **Fase 2D - Polimento Visual:** Reorganização do layout para acomodar os novos controles mantendo a estética premium.
 
-### Fase 3: Organização de Dados e Histórico (Próxima Fase)
+### Fase 3: Organização de Dados e Histórico (Em andamento)
 * **Objetivo:** Estruturar as sessões de ditado para fácil busca e recuperação.
-* **Fase 3A - Histórico no Widget:** Mostrar um histórico com os últimos textos ditados diretamente no widget, permitindo copiar ou reutilizar.
-* **Fase 3B - Organização por Data:** Salvar os arquivos em subpastas organizadas por data (ex: `gravacoes_ditado/YYYY-MM-DD/`).
-* **Fase 3C - Metadados:** Criar arquivo JSON de metadados consolidando áudio, texto, data e tempo.
+* **Fase 3A - Histórico no Widget (Implementada - Preparada para validação):** Mostrar um histórico em memória com os últimos textos ditados diretamente no widget, permitindo copiar, abrir TXT ou reutilizar.
+* **Fase 3B - Organização por Data (Próxima Fase):** Salvar os arquivos em subpastas organizadas por data (ex: `gravacoes_ditado/YYYY-MM-DD/`).
+* **Fase 3C - Metadados (Próxima Fase):** Criar arquivo JSON de metadados consolidando áudio, texto, data e tempo.
 
 ### Fase 4: Personalização e Design (Futuro)
 * **Objetivo:** Permitir ao usuário adaptar a ferramenta ao seu fluxo de trabalho.
