@@ -1,15 +1,21 @@
 # ROADMAP DO PROJETO
 
-O desenvolvimento do Ditado F8 Whisper está estruturado em fases. A IA deve sempre consultar este documento para entender o que ainda é futuro. **Funcionalidades listadas abaixo NÃO ESTÃO IMPLEMENTADAS.** A IA não deve inventá-las.
+O desenvolvimento do Ditado F8 Whisper está estruturado em fases. A IA deve sempre consultar este documento para entender o que ainda é futuro. **Funcionalidades listadas abaixo NÃO ESTÃO IMPLEMENTADAS (exceto as marcadas como Implementadas/preparadas).** A IA não deve inventá-las.
 
-### Fase 1: Arquitetura de Configuração (Fase 1A Implementada - Preparada para validação)
-* **Objetivo:** Extrair valores hardcoded (caminhos absolutos, teclas) e permitir configurações dinâmicas.
-* **Tarefas Adicionadas na Fase 1A:** 
+### Fase 1: Arquitetura de Configuração (Implementada - Preparada para validação)
+* **Objetivo:** Extrair valores hardcoded, permitir configurações dinâmicas e construir a Interface Visual para edição.
+* **Fase 1A - Back-end de Configuração:** 
   * Criado o arquivo `config.json`.
-  * Movidos os caminhos base e as configurações do Whisper para o arquivo.
-  * Possibilidade de configurar a tecla de atalho no JSON.
-  * Lógica inserida para escolher o modo de gravação: `hold` (segurar) ou `toggle` (apertar para iniciar, apertar para parar).
+  * Lógica base inserida para suportar tecla flexível e modo de gravação (`hold` ou `toggle`).
   * Adicionada tecla de segurança (`Esc`) para cancelar a gravação.
+* **Fase 1B - Front-end de Configuração:**
+  * Adicionado botão de Configurações no Widget Principal.
+  * Criado painel/modal em Tkinter (`Toplevel`) para alterar as opções dinâmicas sem abrir o JSON manualmente.
+  * Habilidade de salvar o `config.json` via interface.
+* **Fase 1C - Aplicação dinâmica de configurações:**
+  * Atualização segura e em tempo real dos hooks de teclado global.
+  * Validações para prevenir que o usuário edite o sistema durante uma gravação.
+  * Eliminação da necessidade de reiniciar a aplicação ao mudar parâmetros.
 
 ### Fase 2: Melhorias de Usabilidade UI/UX
 * **Objetivo:** Dar mais feedback em tempo real para o usuário.
@@ -23,14 +29,14 @@ O desenvolvimento do Ditado F8 Whisper está estruturado em fases. A IA deve sem
 * **Tarefas:**
   * Mostrar um histórico com os últimos textos ditados diretamente no widget.
   * Salvar os arquivos em subpastas organizadas por data.
-  * Criar um arquivo JSON de metadados consolidando áudio, texto, data e tempo de gravação.
+  * Criar arquivo JSON de metadados consolidando áudio, texto, data e tempo.
 
 ### Fase 4: Personalização e Design
 * **Objetivo:** Permitir ao usuário adaptar a ferramenta ao seu fluxo de trabalho.
 * **Tarefas:**
   * Criar um Modo Compacto e um Modo Expandido.
-  * Opções via JSON para: trocar microfone, modelo do Whisper, idioma, tema visual e opção de "Sempre no topo".
-  * Opção de descartar o arquivo `.wav` ou transcrição após uso (Backend preparado com variáveis `save_audio` e `save_txt`, aguardando refinamento da UI para essas configurações).
+  * Opções adicionais na Tela de Configurações para: trocar microfone, modelo do Whisper, idioma e tema visual.
+  * Opção de descartar o arquivo `.wav` ou transcrição após uso.
 
 ### Fase 5: Integração com Windows (System Tray e Logs)
 * **Objetivo:** Comportamento nativo de aplicativo residente.
@@ -39,7 +45,7 @@ O desenvolvimento do Ditado F8 Whisper está estruturado em fases. A IA deve sem
   * Opção de iniciar automaticamente com o Windows.
   * Geração de arquivos reais de logs técnicos.
   * Prevenção contra a abertura de múltiplas instâncias do script.
-  * Melhoria global no tratamento de exceções (try/excepts refinados).
+  * Melhoria global no tratamento de exceções.
 
 ### Fase 6: Empacotamento
 * **Objetivo:** Facilidade de distribuição.

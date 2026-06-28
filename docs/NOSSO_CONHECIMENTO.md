@@ -4,6 +4,19 @@ Este arquivo funciona como a memória histórica e registro de decisões arquite
 
 ---
 
+### Registro 4: Implementação Fase 1C (Aplicação Dinâmica de Configurações) - Preparada para validação
+* **Recarregamento de Hooks Globais:** A substituição das configurações de tecla no front-end foi atualizada para alterar o comportamento em tempo real, livrando o usuário da necessidade de reiniciar o aplicativo. Isso foi feito implementando métodos dedicados (`unregister_hotkeys` e `register_hotkeys`), que removem seguramente a escuta global do módulo `keyboard` e reativam com as novas variáveis.
+* **Prevenção de Estado Inconsistente:** Alterações de configuração e chamadas ao JSON estão estritamente bloqueadas se a aplicação estiver no estado de gravação (`is_recording`) ou transcrição (`is_processing`). Além disso, as variáveis de tracking do toggle (`is_hotkey_pressed`) são resetadas a cada `register_hotkeys()` para garantir um ciclo limpo a partir de mudanças da interface.
+* **Normalização Visual da Resposta:** A interface Tkinter (`Toplevel`) da aba de configurações agora provê respostas de sucesso não bloqueantes no rodapé, ao invés de janelas pop-up (`messagebox`) intrusivas que interrompem o fluxo quando a operação é bem-sucedida.
+
+---
+
+### Registro 3: Implementação Fase 1B (Interface de Configurações / Front-end do Widget) - Preparada para validação
+* **Integração Visual de Configuração:** Implementado um modal `Toplevel` no `ditado_f8_widget.py` focado exclusivamente na edição das preferências do usuário via UI nativa. O modal gerencia a gravação direta no arquivo `config.json`.
+* **Polimento do Widget Base:** Ajustes finos nas dimensões e estruturação de badges visuais (`self.badge_var`) foram feitos para tornar o widget mais elegante e claro quanto ao estado atual (Modo Hold vs Toggle e qual tecla está ativa).
+
+---
+
 ### Registro 2: Implementação Fase 1A (Arquitetura Dinâmica) - Preparada para validação
 * **Gerenciamento de Configuração Segura:** Adotamos o uso do `config.json` referenciado através de `os.path.abspath(__file__)` como base. Isso previne bugs na criação do arquivo quando a inicialização do app não ocorre a partir do diretório raiz local (ex: rodando via `pythonw.exe`).
 * **Captura Global de Hotkeys:** O projeto transita do mapeamento pontual para o uso flexível do módulo `keyboard` (via `hook`), permitindo amarrar ações a combinações compostas de tecla, como `ctrl+space`. 

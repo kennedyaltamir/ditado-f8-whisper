@@ -6,6 +6,7 @@ import json
 import threading
 import subprocess
 import tkinter as tk
+from tkinter import ttk, messagebox
 from datetime import datetime
 
 import keyboard
@@ -68,6 +69,7 @@ BG_CARD = "#10151f"
 BG_CARD_2 = "#151c29"
 BG_BUTTON = "#1f6feb"
 BG_BUTTON_HOVER = "#388bfd"
+BG_SETTINGS = "#0d1117"
 
 COLOR_READY = "#00d26a"
 COLOR_RECORDING = "#ff4d5e"
@@ -87,7 +89,7 @@ class DitadoWidget:
 
         self.root = root
         self.root.title("Ditado F8 Whisper")
-        self.root.geometry("560x330+1280+80")
+        self.root.geometry("560x345+1280+80")
         self.root.configure(bg=BG_TRANSPARENT)
         self.root.attributes("-topmost", self.config.get("always_on_top", True))
         self.root.resizable(False, False)
@@ -113,7 +115,7 @@ class DitadoWidget:
         self.recording_mode = self.config.get("recording_mode", "hold")
         
         mode_str = "Segurar" if self.recording_mode == "hold" else "Toggle"
-        self.ready_text = f"Rodando em segundo plano • Hotkey: {self.hotkey.upper()} • Modo: {mode_str}"
+        self.ready_text = "Aguardando comando de voz..."
 
         self.status_var = tk.StringVar(value="Pronto")
         self.detail_var = tk.StringVar(value=self.ready_text)
@@ -122,6 +124,9 @@ class DitadoWidget:
         
         mic_name = self.config.get("microphone_name_contains", "Iriun")
         self.mic_var = tk.StringVar(value=f"Microfone: {mic_name}")
+        
+        self.badge_var = tk.StringVar()
+        self.update_badge()
 
         self.device_index = self.find_input_device()
 
@@ -139,6 +144,8 @@ class DitadoWidget:
 
         self.drag_start_x = 0
         self.drag_start_y = 0
+        
+        self.settings_window = None
 
         self.build_ui()
         self.register_hotkeys()
@@ -146,15 +153,19 @@ class DitadoWidget:
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.root.bind("<Map>", self.on_restore)
 
+    def update_badge(self):
+        mode_str = "Segurar" if self.recording_mode == "hold" else "Toggle"
+        self.badge_var.set(f"Tecla: {self.hotkey.upper()} | Modo: {mode_str}")
+
     # ==========================================================
-    # UI
+    # UI Principal
     # ==========================================================
 
     def build_ui(self):
         self.canvas = tk.Canvas(
             self.root,
             width=560,
-            height=330,
+            height=345,
             bg=BG_TRANSPARENT,
             highlightthickness=0,
             bd=0
@@ -164,7 +175,7 @@ class DitadoWidget:
         self.draw_rounded_card()
 
         self.card = tk.Frame(self.root, bg=BG_CARD)
-        self.card.place(x=14, y=14, width=532, height=302)
+        self.card.place(x=14, y=14, width=532, height=317)
 
         self.build_header()
         self.build_status_area()
@@ -172,8 +183,11 @@ class DitadoWidget:
         self.build_buttons()
 
     def draw_rounded_card(self):
-        self.round_rectangle(10, 10, 550, 322, radius=24, fill="#05070c", outline="")
-        self.round_rectangle(14, 14, 546, 318, radius=22, fill=BG_CARD, outline="#263244")
+        # Sombra/Borda Externa
+        self.round_rectangle(10, 10, 550, 335, radius=24, fill="#05070c", outline="")
+        # Fundo Principal
+        self.round_rectangle(14, 14, 546, 331, radius=22, fill=BG_CARD, outline="#263244")
+        # Fundo do Cabeçalho
         self.round_rectangle(14, 14, 546, 82, radius=22, fill=BG_CARD_2, outline="")
         self.canvas.create_rectangle(14, 58, 546, 82, fill=BG_CARD_2, outline="")
 
@@ -224,6 +238,10 @@ class DitadoWidget:
 
         controls = tk.Frame(self.header, bg=BG_CARD_2)
         controls.pack(side="right", padx=10, pady=10)
+        
+        # Botão de Configurações
+        cfg_btn = self.make_window_button(controls, "⚙", self.open_settings)
+        cfg_btn.pack(side="left", padx=(0, 6))
 
         min_btn = self.make_window_button(controls, "—", self.minimize_window)
         min_btn.pack(side="left", padx=(0, 6))
@@ -250,7 +268,7 @@ class DitadoWidget:
 
     def build_status_area(self):
         body = tk.Frame(self.card, bg=BG_CARD)
-        body.pack(fill="x", padx=18, pady=(18, 0))
+        body.pack(fill="x", padx=18, pady=(15, 0))
 
         self.status_dot = tk.Canvas(body, width=18, height=18, bg=BG_CARD, highlightthickness=0)
         self.status_dot.pack(side="left", anchor="n", pady=(8, 0))
@@ -265,19 +283,30 @@ class DitadoWidget:
         )
         self.status_label.pack(anchor="w")
 
+        # Container para os detalhes e badges
+        detail_container = tk.Frame(status_text_frame, bg=BG_CARD)
+        detail_container.pack(anchor="w", fill="x", pady=(2, 0))
+
         self.detail_label = tk.Label(
-            status_text_frame, textvariable=self.detail_var, fg=COLOR_MUTED,
+            detail_container, textvariable=self.detail_var, fg=COLOR_MUTED,
             bg=BG_CARD, font=("Segoe UI", 10)
         )
-        self.detail_label.pack(anchor="w", pady=(2, 0))
+        self.detail_label.pack(side="left")
+        
+        # Badge visual para hotkey/mode
+        badge = tk.Label(
+            detail_container, textvariable=self.badge_var, fg="#388bfd",
+            bg="#182333", font=("Segoe UI", 8, "bold"), padx=6, pady=2
+        )
+        badge.pack(side="left", padx=(10, 0))
 
     def build_last_text_area(self):
         area = tk.Frame(self.card, bg=BG_CARD)
-        area.pack(fill="x", padx=18, pady=(18, 0))
+        area.pack(fill="x", padx=18, pady=(15, 0))
 
         self.last_text_label = tk.Label(
             area, textvariable=self.last_text_var, fg=COLOR_BLUE, bg=BG_CARD,
-            font=("Segoe UI", 9), justify="left", anchor="w", wraplength=500
+            font=("Segoe UI", 9), justify="left", anchor="nw", wraplength=500, height=2
         )
         self.last_text_label.pack(anchor="w", fill="x")
 
@@ -285,11 +314,11 @@ class DitadoWidget:
             area, textvariable=self.last_file_var, fg=COLOR_MUTED, bg=BG_CARD,
             font=("Segoe UI", 8), justify="left", anchor="w", wraplength=500
         )
-        self.last_file_label.pack(anchor="w", fill="x", pady=(8, 0))
+        self.last_file_label.pack(anchor="w", fill="x", pady=(4, 0))
 
     def build_buttons(self):
         btn_frame = tk.Frame(self.card, bg=BG_CARD)
-        btn_frame.pack(fill="x", padx=18, pady=(18, 0))
+        btn_frame.pack(fill="x", padx=18, pady=(12, 0))
 
         self.make_action_button(btn_frame, "Abrir pasta", self.open_save_folder).pack(side="left", padx=(0, 8))
         self.make_action_button(btn_frame, "Ouvir áudio", self.open_last_audio).pack(side="left", padx=(0, 8))
@@ -300,14 +329,184 @@ class DitadoWidget:
         btn = tk.Button(
             parent, text=text, command=command, bg=BG_BUTTON, fg="white",
             activebackground=BG_BUTTON_HOVER, activeforeground="white",
-            relief="flat", padx=12, pady=7, font=("Segoe UI", 9, "bold"), cursor="hand2"
+            relief="flat", padx=12, pady=6, font=("Segoe UI", 9, "bold"), cursor="hand2"
         )
         btn.bind("<Enter>", lambda e: btn.config(bg=BG_BUTTON_HOVER))
         btn.bind("<Leave>", lambda e: btn.config(bg=BG_BUTTON))
         return btn
 
     # ==========================================================
-    # Janela
+    # Tela de Configurações (Fases 1B e 1C)
+    # ==========================================================
+    
+    def open_settings(self):
+        if self.settings_window is not None and self.settings_window.winfo_exists():
+            self.settings_window.lift()
+            self.settings_window.focus_force()
+            return
+
+        self.settings_window = tk.Toplevel(self.root)
+        self.settings_window.title("Configurações - Ditado F8 Whisper")
+        self.settings_window.geometry("450x440+1250+150")
+        self.settings_window.configure(bg=BG_SETTINGS)
+        self.settings_window.resizable(False, False)
+        
+        if self.config.get("always_on_top", True):
+            self.settings_window.attributes("-topmost", True)
+            
+        style = ttk.Style(self.settings_window)
+        style.theme_use("clam")
+        
+        container = tk.Frame(self.settings_window, bg=BG_SETTINGS, padx=25, pady=20)
+        container.pack(fill="both", expand=True)
+        
+        lbl_title = tk.Label(container, text="⚙ Configurações Gerais", fg="white", bg=BG_SETTINGS, font=("Segoe UI", 14, "bold"))
+        lbl_title.pack(anchor="w", pady=(0, 15))
+        
+        # 1. Hotkey
+        frame_hotkey = tk.Frame(container, bg=BG_SETTINGS)
+        frame_hotkey.pack(fill="x", pady=5)
+        tk.Label(frame_hotkey, text="Tecla de ativação:", fg=COLOR_TEXT, bg=BG_SETTINGS, font=("Segoe UI", 10)).pack(side="left", anchor="w", pady=2)
+        var_hotkey = tk.StringVar(value=self.hotkey)
+        cb_hotkey = ttk.Combobox(frame_hotkey, textvariable=var_hotkey, values=["f6", "f7", "f8", "f9", "f10", "ctrl+space", "ctrl+alt+d"], state="normal", width=15)
+        cb_hotkey.pack(side="right")
+        
+        # 2. Modo de Gravação
+        frame_mode = tk.Frame(container, bg=BG_SETTINGS)
+        frame_mode.pack(fill="x", pady=5)
+        tk.Label(frame_mode, text="Modo de gravação:", fg=COLOR_TEXT, bg=BG_SETTINGS, font=("Segoe UI", 10)).pack(side="left", anchor="w", pady=2)
+        
+        cb_val_mode = "Segurar para falar" if self.recording_mode == "hold" else "Apertar para iniciar / parar"
+        var_mode = tk.StringVar(value=cb_val_mode)
+        cb_mode = ttk.Combobox(frame_mode, textvariable=var_mode, values=["Segurar para falar", "Apertar para iniciar / parar"], state="readonly", width=25)
+        cb_mode.pack(side="right")
+
+        # 3. Tecla de Cancelamento
+        frame_cancel = tk.Frame(container, bg=BG_SETTINGS)
+        frame_cancel.pack(fill="x", pady=5)
+        tk.Label(frame_cancel, text="Tecla para cancelar:", fg=COLOR_TEXT, bg=BG_SETTINGS, font=("Segoe UI", 10)).pack(side="left", anchor="w", pady=2)
+        var_cancel = tk.StringVar(value=self.cancel_hotkey)
+        cb_cancel = ttk.Combobox(frame_cancel, textvariable=var_cancel, values=["esc", "f12", "ctrl+alt+c"], state="normal", width=15)
+        cb_cancel.pack(side="right")
+        
+        tk.Frame(container, bg="#30363d", height=1).pack(fill="x", pady=15)
+        
+        # 4. Colar automaticamente
+        var_autopaste = tk.BooleanVar(value=self.config.get("auto_paste", True))
+        chk_autopaste = tk.Checkbutton(
+            container, text="Colar texto automaticamente após transcrever", 
+            variable=var_autopaste, fg=COLOR_TEXT, bg=BG_SETTINGS, 
+            selectcolor=BG_CARD_2, activebackground=BG_SETTINGS, activeforeground="white", font=("Segoe UI", 10)
+        )
+        chk_autopaste.pack(anchor="w", pady=5)
+
+        # 5. Sempre no Topo
+        var_ontop = tk.BooleanVar(value=self.config.get("always_on_top", True))
+        chk_ontop = tk.Checkbutton(
+            container, text="Manter widget sempre no topo", 
+            variable=var_ontop, fg=COLOR_TEXT, bg=BG_SETTINGS, 
+            selectcolor=BG_CARD_2, activebackground=BG_SETTINGS, activeforeground="white", font=("Segoe UI", 10)
+        )
+        chk_ontop.pack(anchor="w", pady=5)
+        
+        tk.Frame(container, bg=BG_SETTINGS).pack(fill="both", expand=True)
+
+        # Rodapé com feedback visual e botões
+        frame_footer = tk.Frame(container, bg=BG_SETTINGS)
+        frame_footer.pack(fill="x", side="bottom")
+        
+        self.lbl_feedback = tk.Label(
+            frame_footer, text="As alterações são aplicadas imediatamente ao salvar.",
+            fg=COLOR_MUTED, bg=BG_SETTINGS, font=("Segoe UI", 8)
+        )
+        self.lbl_feedback.pack(side="top", fill="x", pady=(0, 10))
+
+        btn_actions = tk.Frame(frame_footer, bg=BG_SETTINGS)
+        btn_actions.pack(fill="x")
+        
+        btn_open_json = tk.Button(
+            btn_actions, text="Abrir config.json", command=lambda: os.startfile(CONFIG_PATH),
+            bg="#21262d", fg="white", activebackground="#30363d", activeforeground="white",
+            relief="flat", padx=10, pady=6, cursor="hand2"
+        )
+        btn_open_json.pack(side="left")
+
+        btn_save = tk.Button(
+            btn_actions, text="Salvar", 
+            command=lambda: self.save_settings(
+                var_hotkey.get(), var_mode.get(), var_cancel.get(), 
+                var_autopaste.get(), var_ontop.get()
+            ),
+            bg=BG_BUTTON, fg="white", activebackground=BG_BUTTON_HOVER, activeforeground="white",
+            relief="flat", padx=20, pady=6, font=("Segoe UI", 10, "bold"), cursor="hand2"
+        )
+        btn_save.pack(side="right")
+
+    def show_feedback(self, msg, color):
+        if hasattr(self, "lbl_feedback") and self.lbl_feedback.winfo_exists():
+            self.lbl_feedback.config(text=msg, fg=color)
+            
+    def save_settings(self, new_hotkey, mode_str, new_cancel, auto_paste, on_top):
+        if self.is_recording or self.is_processing:
+            self.show_feedback("Aguarde a gravação/transcrição terminar antes de alterar configurações.", COLOR_ERROR)
+            return
+            
+        nh = new_hotkey.strip().lower()
+        nc = new_cancel.strip().lower()
+        
+        if not nh or not nc:
+            self.show_feedback("As teclas de ativação e cancelamento não podem ficar vazias.", COLOR_ERROR)
+            return
+            
+        if nh == nc:
+            self.show_feedback("A tecla de ativação e a tecla de cancelamento não podem ser iguais.", COLOR_ERROR)
+            return
+            
+        nm = "hold" if mode_str == "Segurar para falar" else "toggle"
+        
+        # 1. Atualizar JSON
+        try:
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                user_config = json.load(f)
+        except Exception:
+            user_config = DEFAULT_CONFIG.copy()
+            
+        user_config["hotkey"] = nh
+        user_config["recording_mode"] = nm
+        user_config["cancel_hotkey"] = nc
+        user_config["auto_paste"] = auto_paste
+        user_config["always_on_top"] = on_top
+        
+        try:
+            with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+                json.dump(user_config, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            self.show_feedback(f"Erro ao salvar config.json: {e}", COLOR_ERROR)
+            return
+
+        # 2. Atualiza a memória em tempo real
+        self.hotkey = nh
+        self.cancel_hotkey = nc
+        self.recording_mode = nm
+        self.config["auto_paste"] = auto_paste
+        self.config["always_on_top"] = on_top
+        
+        # 3. Aplicar always_on_top visualmente
+        self.root.attributes("-topmost", on_top)
+        if self.settings_window and self.settings_window.winfo_exists():
+            self.settings_window.attributes("-topmost", on_top)
+            
+        # 4. Recarregar hooks de forma segura
+        self.register_hotkeys()
+        
+        # 5. Atualizar badge da interface
+        self.update_badge()
+        
+        self.show_feedback("Configurações salvas e aplicadas com sucesso.", COLOR_SUCCESS)
+
+
+    # ==========================================================
+    # Janela Base
     # ==========================================================
 
     def start_drag(self, event):
@@ -353,15 +552,19 @@ class DitadoWidget:
         raise RuntimeError(f"Microfone '{mic_name_contains}' não encontrado.")
 
     # ==========================================================
-    # Hotkey (Captura Global)
+    # Hotkey (Captura Global) - Dynamic Loading
     # ==========================================================
 
-    def register_hotkeys(self):
+    def unregister_hotkeys(self):
         try:
             keyboard.unhook_all()
         except Exception:
             pass
 
+    def register_hotkeys(self):
+        self.unregister_hotkeys()
+        self.is_hotkey_pressed = False
+        self.cancel_until_hotkey_released = False
         keyboard.hook(self.on_key_event)
 
     def on_key_event(self, event):
@@ -425,7 +628,7 @@ class DitadoWidget:
     def set_last_text(self, text):
         text = text if text else "nenhum"
         self.last_text = text
-        preview = text if len(text) <= 230 else text[:230] + "..."
+        preview = text if len(text) <= 150 else text[:150] + "..."
         self.root.after(0, lambda: self.last_text_var.set(f"Último texto: {preview}"))
 
     def set_last_file(self, wav_path, txt_path):
@@ -492,9 +695,9 @@ class DitadoWidget:
         self.frames = []
 
         if self.recording_mode == "hold":
-            detail = f"Solte {self.hotkey.upper()} para transcrever | {self.cancel_hotkey.upper()} cancela"
+            detail = f"Solte {self.hotkey.upper()} p/ transcrever | {self.cancel_hotkey.upper()} cancela"
         else:
-            detail = f"Aperte {self.hotkey.upper()} novamente para transcrever | {self.cancel_hotkey.upper()} cancela"
+            detail = f"Aperte {self.hotkey.upper()} novam. p/ transcrever | {self.cancel_hotkey.upper()} cancela"
 
         self.set_status("Gravando...", detail, COLOR_RECORDING)
         self.beep_start()
@@ -540,7 +743,7 @@ class DitadoWidget:
         audio_data = np.concatenate(self.frames, axis=0)
 
         self.is_processing = True
-        self.set_status("Carregando sua voz...", "Transcrevendo, salvando e colando", COLOR_PROCESSING)
+        self.set_status("Carregando sua voz...", "Transcrevendo e salvando...", COLOR_PROCESSING)
         self.beep_end()
 
         threading.Thread(
@@ -633,8 +836,6 @@ class DitadoWidget:
         txt_path = os.path.join(self.save_dir, f"{timestamp}.txt")
 
         try:
-            # Preservado comportamento default de salvar ambos em todos os casos nesta fase, 
-            # garantindo que os botões do UI funcionem perfeitamente.
             self.save_wav(wav_path, audio_data)
 
             text = self.transcribe_wav(wav_path)
@@ -684,12 +885,8 @@ class DitadoWidget:
                 self.stream.close()
         except Exception:
             pass
-
-        try:
-            keyboard.unhook_all()
-        except Exception:
-            pass
-
+            
+        self.unregister_hotkeys()
         self.root.destroy()
 
 
