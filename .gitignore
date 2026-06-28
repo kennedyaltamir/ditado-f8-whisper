@@ -34,3 +34,7 @@ desktop.ini
 .vscode/
 # Histórico local do VS Code
 .history/
+
+# Arquivos locais do Patch Engine
+resposta.txt
+Cópia do projeto/
