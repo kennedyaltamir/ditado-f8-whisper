@@ -1,0 +1,17 @@
+{
+  "hotkey": "f8",
+  "cancel_hotkey": "esc",
+  "recording_mode": "toggle",
+  "microphone_name_contains": "Iriun",
+  "whisper_dir": "C:\\whispercpp\\whisper-bin-x64\\Release",
+  "whisper_exe": "C:\\whispercpp\\whisper-bin-x64\\Release\\whisper-cli.exe",
+  "model_path": "C:\\whispercpp\\whisper-bin-x64\\Release\\models\\ggml-medium.bin",
+  "save_dir": "C:\\whispercpp\\gravacoes_ditado",
+  "language": "pt",
+  "sample_rate": 16000,
+  "channels": 1,
+  "auto_paste": true,
+  "save_audio": true,
+  "save_txt": true,
+  "always_on_top": true
+}

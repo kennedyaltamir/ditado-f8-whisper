@@ -2,14 +2,14 @@
 
 O desenvolvimento do Ditado F8 Whisper está estruturado em fases. A IA deve sempre consultar este documento para entender o que ainda é futuro. **Funcionalidades listadas abaixo NÃO ESTÃO IMPLEMENTADAS.** A IA não deve inventá-las.
 
-### Fase 1: Arquitetura de Configuração (Próxima Fase)
+### Fase 1: Arquitetura de Configuração (Fase 1A Implementada - Preparada para validação)
 * **Objetivo:** Extrair valores hardcoded (caminhos absolutos, teclas) e permitir configurações dinâmicas.
-* **Tarefas:** 
-  * Criar o arquivo `config.json`.
-  * Mover os caminhos `C:\whispercpp\...` do código para o JSON.
-  * Permitir configurar a tecla de atalho no JSON (tirar a obrigatoriedade do F8 fixo).
-  * Criar lógica para escolher o modo de gravação: `hold` (segurar) ou `toggle` (apertar para iniciar, apertar para parar).
-  * Adicionar tecla de segurança para cancelar gravação (ex: `Esc`).
+* **Tarefas Adicionadas na Fase 1A:** 
+  * Criado o arquivo `config.json`.
+  * Movidos os caminhos base e as configurações do Whisper para o arquivo.
+  * Possibilidade de configurar a tecla de atalho no JSON.
+  * Lógica inserida para escolher o modo de gravação: `hold` (segurar) ou `toggle` (apertar para iniciar, apertar para parar).
+  * Adicionada tecla de segurança (`Esc`) para cancelar a gravação.
 
 ### Fase 2: Melhorias de Usabilidade UI/UX
 * **Objetivo:** Dar mais feedback em tempo real para o usuário.
@@ -30,7 +30,7 @@ O desenvolvimento do Ditado F8 Whisper está estruturado em fases. A IA deve sem
 * **Tarefas:**
   * Criar um Modo Compacto e um Modo Expandido.
   * Opções via JSON para: trocar microfone, modelo do Whisper, idioma, tema visual e opção de "Sempre no topo".
-  * Opções de ligar/desligar auto-paste, e opção de descartar o arquivo `.wav` após uso.
+  * Opção de descartar o arquivo `.wav` ou transcrição após uso (Backend preparado com variáveis `save_audio` e `save_txt`, aguardando refinamento da UI para essas configurações).
 
 ### Fase 5: Integração com Windows (System Tray e Logs)
 * **Objetivo:** Comportamento nativo de aplicativo residente.
