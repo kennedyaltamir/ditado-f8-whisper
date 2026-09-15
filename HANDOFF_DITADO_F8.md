@@ -4,7 +4,8 @@
 > Repositório: `kennedyaltamir/ditado-f8-whisper`  
 > Branch de trabalho: `update`  
 > Branch base: `main`  
-> SHA-base validado: `c65fe91b60f2142afa3338f20874535610562e11`  
+> SHA-base de `main`: `c65fe91b60f2142afa3338f20874535610562e11`  
+> Último commit funcional/documental antes desta atualização: `261bcb2e124c12cd841bf2e09489ef2a74e39821`  
 > Data do marco: 2026-09-15
 
 ---
@@ -15,67 +16,110 @@ Aplicação desktop local para Windows 11, escrita em Python, destinada a captur
 
 Fluxo funcional principal a preservar:
 
-`segurar F8 -> falar -> soltar F8 -> transcrever -> copiar/colar`
+`F8 -> gravação -> Whisper local -> texto -> clipboard/colagem`
 
-Também devem ser preservados: modo hold, modo toggle, botão visual, cancelamento, histórico, configuração, inicialização silenciosa, salvamento WAV/TXT e operação local/offline.
+Comportamentos que devem permanecer disponíveis:
+
+- modo hold;
+- modo toggle;
+- botão visual;
+- cancelamento;
+- histórico;
+- configuração;
+- inicialização silenciosa;
+- persistência WAV/TXT conforme configuração;
+- operação local/offline.
 
 ---
 
 ## 2. Estado da branch
 
-- `main` remoto auditado em `c65fe91b60f2142afa3338f20874535610562e11`.
-- A branch remota `update` foi criada a partir exatamente desse SHA.
-- Nenhuma alteração foi feita em `main` neste marco.
-- Existe também uma branch experimental anterior `ai/update`; ela não é a branch operacional definida por este handoff.
-- Estado local informado anteriormente pelo usuário: branch local `update`, working tree limpo, HEAD alinhado ao mesmo SHA-base. Esse estado local deve ser revalidado pelo usuário antes de testes locais futuros.
+### Remoto — VERIFICADO
+
+- `main`: `c65fe91b60f2142afa3338f20874535610562e11`;
+- `update`: `261bcb2e124c12cd841bf2e09489ef2a74e39821` antes deste commit documental;
+- `update` está 4 commits à frente e 0 atrás de `main` nesse ponto;
+- merge-base é o próprio `c65fe91b60f2142afa3338f20874535610562e11`;
+- `main` não foi alterada durante o trabalho.
+
+### Local do usuário — TESTADO PELO USUÁRIO
+
+Após `git fetch` e `git merge --ff-only origin/update`:
+
+- branch local: `update`;
+- HEAD local: `261bcb2e124c12cd841bf2e09489ef2a74e39821`;
+- `origin/update` alinhado ao mesmo SHA;
+- working tree: limpo.
+
+Esse estado deve ser atualizado por fast-forward após novos commits remotos antes dos próximos testes.
 
 ---
 
 ## 3. Último commit validado
 
-Base validada antes deste documento:
+Último commit de código/launcher testado estaticamente e sincronizado localmente:
 
-`c65fe91b60f2142afa3338f20874535610562e11` — `docs: registrar proximas fases do ditado f8`
+`261bcb2e124c12cd841bf2e09489ef2a74e39821` — `fix: iniciar app a partir do diretorio do launcher`
 
-Este documento será o primeiro commit exclusivo da branch `update`.
+Commits da `update` até esse ponto:
+
+1. `f73fc9d99923fc7604eee00e009ca45c11fe4bd3` — `docs: criar handoff tecnico inicial da branch update`;
+2. `618badb6744f411d33e01ded21991ee474383ee0` — `refactor: adicionar dispatcher de eventos e estado inicial`;
+3. `bdf49166b834f01c47e92c525a90e2e9420fb4c8` — `refactor: iniciar widget pelo dispatcher de eventos`;
+4. `261bcb2e124c12cd841bf2e09489ef2a74e39821` — `fix: iniciar app a partir do diretorio do launcher`.
+
+O SHA deste commit documental deve ser registrado na próxima atualização do handoff.
 
 ---
 
 ## 4. Objetivo do projeto
 
-Evoluir o MVP funcional para uma aplicação desktop local robusta, determinística, testável, diagnosticável, portátil entre instalações Windows e preparada para futura distribuição, sem regressão do fluxo funcional existente.
+Evoluir o MVP funcional para uma aplicação desktop local robusta, determinística, testável, diagnosticável e preparada para futura distribuição sem regressão do fluxo existente.
 
-A evolução deve ser incremental, verificável e reversível.
+A evolução deve permanecer incremental, verificável e reversível.
 
 ---
 
 ## 5. Arquitetura atual
 
-O núcleo permanece concentrado em `ditado_f8_widget.py`, que reúne:
+O núcleo funcional continua concentrado em `ditado_f8_widget.py`, que ainda reúne:
 
 - UI Tkinter;
 - configuração;
-- hotkeys globais via `keyboard`;
-- captura de áudio via `sounddevice`;
+- captura de áudio;
 - seleção de dispositivo;
-- estado operacional;
-- armazenamento WAV/TXT;
+- gravação/cancelamento;
+- persistência WAV/TXT;
 - execução do Whisper;
-- parsing da saída;
-- histórico em memória;
-- clipboard;
-- simulação de `Ctrl+V`;
-- shutdown.
+- parsing;
+- histórico;
+- clipboard/auto-paste;
+- shutdown legado.
 
-Arquivos relevantes confirmados:
+M2 introduziu um entrypoint/controlador transitório em `ditado_f8_app.py`.
 
-- `ditado_f8_widget.py`;
-- `ditado_f8.py`;
-- `ditado_f8_widget_backup_controle.py`;
-- `config.json`;
-- `Iniciar Ditado F8 Widget.vbs`;
-- `Iniciar Ditado F8.bat`;
-- `README.md`;
+Esse módulo adiciona:
+
+- `AppState`;
+- `AppEvent`;
+- `queue.SimpleQueue` para eventos;
+- publicação de eventos pelo callback global do `keyboard`;
+- drenagem da fila pelo loop Tk via `root.after`;
+- despacho central de eventos de entrada;
+- bloqueio de novos eventos depois do início do fechamento;
+- estados transitórios `IDLE`, `RECORDING`, `PROCESSING`, `CANCELLING`, `ERROR`, `SHUTTING_DOWN`, `CLOSED`.
+
+A arquitetura ainda é transitória: gravação, processamento e shutdown real continuam delegados ao `DitadoWidget` legado.
+
+Arquivos principais:
+
+- `ditado_f8_app.py` — entrypoint atual da refatoração/event dispatcher;
+- `ditado_f8_widget.py` — implementação funcional monolítica ainda reutilizada;
+- `config.json` — configuração ativa;
+- `Iniciar Ditado F8 Widget.vbs` — launcher silencioso apontando para `ditado_f8_app.py` relativo à pasta do próprio VBS;
+- `Iniciar Ditado F8.bat` — launcher legado para `ditado_f8.py`;
+- `ditado_f8.py` — implementação legada;
+- `ditado_f8_widget_backup_controle.py` — backup versionado;
 - documentação em `docs/`;
 - `PROXIMAS_FASES_DITADO_F8.md`;
 - `ROADMAP_FEATURES_DITADO_F8.md`.
@@ -84,7 +128,7 @@ Arquivos relevantes confirmados:
 
 ## 6. Arquitetura alvo
 
-Separação incremental, sem reescrita total, em componentes conceituais:
+Separação incremental, sem reescrita total:
 
 - `AppController`;
 - `HotkeyController`;
@@ -109,27 +153,43 @@ Fluxo alvo:
 
 ### Hold
 
-`HOTKEY_DOWN -> iniciar gravação -> HOTKEY_UP -> parar -> processar -> transcrever -> salvar -> copiar/colar`
+Alvo atual de M2:
+
+`HOTKEY_DOWN -> dispatcher -> iniciar gravação -> HOTKEY_UP -> dispatcher -> parar/processar`
+
+Status: `IMPLEMENTADO`, porém `NÃO TESTADO` manualmente após M2.
 
 ### Toggle
 
-`HOTKEY_DOWN -> iniciar gravação -> HOTKEY_DOWN seguinte -> parar -> processar -> transcrever -> salvar -> copiar/colar`
+Alvo atual de M2:
+
+`HOTKEY_DOWN -> dispatcher -> iniciar -> novo HOTKEY_DOWN -> dispatcher -> parar/processar`
+
+Status: `IMPLEMENTADO`, porém `NÃO TESTADO` manualmente após M2.
 
 ### Botão
 
-`BUTTON_START -> iniciar -> BUTTON_STOP -> processar -> transcrever -> salvar -> copiar/colar`
+`BUTTON_START/BUTTON_STOP -> dispatcher -> gravação/processamento`
+
+Status: `IMPLEMENTADO`, porém `NÃO TESTADO` manualmente após M2.
 
 ### Cancelamento
 
-`CANCEL -> parar stream -> descartar frames atuais -> não chamar Whisper`
+`CANCEL -> dispatcher -> CANCELLING -> cancelamento legado -> IDLE`
 
-Estado atual: o código ainda depende de múltiplos booleanos e chamadas diretas; não existe dispatcher central nem máquina de estados explícita.
+Status: `IMPLEMENTADO`, porém `NÃO TESTADO` manualmente após M2.
+
+### Fechamento normal
+
+`APPLICATION_CLOSE -> SHUTTING_DOWN -> fechamento legado -> CLOSED`
+
+Status: `TESTADO PELO USUÁRIO` para fechamento normal pelo botão `X` quando o app não estava em processamento.
 
 ---
 
 ## 8. Máquina de estados
 
-Estados-alvo:
+Estados definidos em `ditado_f8_app.py`:
 
 - `IDLE`;
 - `RECORDING`;
@@ -139,14 +199,17 @@ Estados-alvo:
 - `SHUTTING_DOWN`;
 - `CLOSED`.
 
-Eventos-alvo:
+Eventos atualmente definidos:
 
 - `HOTKEY_DOWN`;
 - `HOTKEY_UP`;
 - `BUTTON_START`;
 - `BUTTON_STOP`;
 - `CANCEL`;
-- `APPLICATION_CLOSE`;
+- `APPLICATION_CLOSE`.
+
+Eventos ainda não modelados no dispatcher:
+
 - `RECORD_LIMIT_REACHED`;
 - `RECORDING_ERROR`;
 - `TRANSCRIPTION_SUCCESS`;
@@ -154,206 +217,296 @@ Eventos-alvo:
 - `TRANSCRIPTION_ERROR`;
 - `TRANSCRIPTION_TIMEOUT`.
 
-Ainda não implementada neste marco.
+Classificação: `PARCIAL`.
+
+A FSM ainda espelha `self.is_processing` do widget legado para retornar de `PROCESSING` a `IDLE`; isso deve desaparecer quando resultados de transcrição forem estruturados e publicados como eventos explícitos.
 
 ---
 
 ## 9. Componentes principais
 
+### `ditado_f8_app.py`
+
+Controlador transitório/event dispatcher. É o entrypoint atual da branch `update`.
+
 ### `ditado_f8_widget.py`
-Entrypoint atual do widget e núcleo funcional.
+
+Implementação funcional herdada pelo controlador transitório. Continua responsável pelas operações concretas de áudio, Whisper, persistência, UI e output.
 
 ### `config.json`
-Configuração ativa. Atualmente contém caminhos absolutos de ambiente e flags `save_audio`/`save_txt`.
+
+Configuração ativa. Ainda contém caminhos específicos do ambiente e flags de persistência não respeitadas pelo fluxo.
 
 ### `Iniciar Ditado F8 Widget.vbs`
-Launcher silencioso. Atualmente referencia caminho absoluto do Python e do script.
+
+Launcher silencioso. Agora resolve `ditado_f8_app.py` pela pasta do próprio VBS. O caminho do interpretador Python ainda é absoluto e específico do ambiente.
 
 ### `Iniciar Ditado F8.bat`
-Launcher alternativo; ainda executa `ditado_f8.py` e usa `C:\whispercpp`.
 
-### `ditado_f8.py`
-Código legado ainda referenciado pelo BAT; não remover sem análise separada.
-
-### `ditado_f8_widget_backup_controle.py`
-Backup versionado; não remover sem busca de referências e commit próprio.
+Launcher legado que ainda executa `ditado_f8.py` e depende de `C:\whispercpp`.
 
 ---
 
 ## 10. Problemas conhecidos
 
 ### F01 — CRITICAL — fronteira `keyboard -> Tkinter`
-**CONFIRMADO.** `keyboard.hook(self.on_key_event)` conduz a chamadas diretas de `start_recording()`, `stop_and_process()` e `cancel_recording()`. Esses caminhos chegam a operações Tk como `btn.config`, `after_cancel` e escrita em `StringVar`. Nem toda alteração visual é despachada para o loop principal.
+
+**PARCIALMENTE CORRIGIDO EM M2.** No entrypoint atual `ditado_f8_app.py`, o callback global não chama diretamente métodos Tk/gravação; ele publica eventos para a fila. O dispatcher executado via Tk processa esses eventos.
+
+Pendência: callbacks do Whisper/thread de processamento e demais caminhos assíncronos ainda dependem do widget legado e precisam de revisão própria.
 
 ### F02 — HIGH — sem limite máximo de gravação
-**CONFIRMADO.** Frames são acumulados enquanto `is_recording` for verdadeiro; não existe `max_record_seconds`.
+
+**PENDENTE.** Não há `max_record_seconds`.
 
 ### F03 — HIGH — caminhos específicos de ambiente
-**CONFIRMADO.** `config.json` e defaults usam `C:\whispercpp\...`.
+
+**PENDENTE.** Config/defaults ainda dependem de `C:\whispercpp\...`.
 
 ### F04 — HIGH — launcher VBS não portátil
-**CONFIRMADO.** Usa caminho absoluto para Python do perfil Windows e para o script.
+
+**PARCIALMENTE CORRIGIDO.** O caminho do script passou a ser relativo ao VBS. O caminho do Python ainda é absoluto.
 
 ### F05 — HIGH — foco da janela de destino
-**CONFIRMADO COMO RISCO.** O código envia `keyboard.press_and_release("ctrl+v")` sem capturar/validar/restaurar explicitamente a janela-alvo.
+
+**PENDENTE.** `Ctrl+V` ainda pode ser enviado sem restauração segura da janela-alvo.
 
 ### F06 — HIGH — resultado Whisper sem semântica estruturada
-**CONFIRMADO.** `transcribe_wav()` retorna apenas `str`.
+
+**PENDENTE.** `transcribe_wav()` ainda retorna `str`.
 
 ### F07 — MEDIUM — parser Whisper acoplado
-**CONFIRMADO.** Regex de parsing está dentro de `transcribe_wav()`.
+
+**PENDENTE.** Parsing continua dentro do fluxo legado.
 
 ### F08 — MEDIUM — possível colisão de nomes
-**CONFIRMADO.** `process_audio()` usa timestamp com resolução de segundos.
+
+**PENDENTE.** Timestamp continua com resolução de segundos.
 
 ### F09 — MEDIUM — microfone resolvido apenas no início
-**CONFIRMADO.** `device_index` é resolvido no `__init__` e não há recuperação ativa antes de nova sessão.
 
-### F10 — MEDIUM — `status` do callback de áudio ignorado
-**CONFIRMADO.** O callback recebe `status`, mas não o trata.
+**PENDENTE.** Sem recuperação/re-enumeração ativa.
 
-### F11 — MEDIUM — estado distribuído em booleanos
-**CONFIRMADO.** `is_recording`, `is_processing`, `is_hotkey_pressed`, `cancel_until_hotkey_released`, `frames` e `stream` coordenam o estado sem FSM explícita.
+### F10 — MEDIUM — status do callback de áudio ignorado
+
+**PENDENTE.** O parâmetro `status` ainda não é tratado.
+
+### F11 — MEDIUM — estado compartilhado baseado em booleanos
+
+**PARCIALMENTE CORRIGIDO.** Existe `AppState`, mas o controlador ainda espelha `is_recording`/`is_processing` do widget legado. A migração para FSM como única fonte de estado ainda não terminou.
 
 ### F12 — MEDIUM — shutdown não coordenado
-**CONFIRMADO.** `on_close()` fecha stream, desregistra hooks e destrói a root, sem coordenação explícita com thread/subprocesso em andamento.
+
+**PENDENTE.** Fechamento normal foi testado, mas fechamento durante `RECORDING`/`PROCESSING` e callbacks tardios continuam sem validação/coordenação completa.
 
 ### F13 — MEDIUM — Whisper sem timeout
-**CONFIRMADO.** `subprocess.run(...)` não recebe `timeout=`.
+
+**PENDENTE.** `subprocess.run()` continua sem timeout.
 
 ### F14 — MEDIUM — configuração sem schema/versionamento
-**CONFIRMADO.** Não há `config_version` nem validação formal.
+
+**PENDENTE.** Sem `config_version` e sem validador formal.
 
 ### F15 — MEDIUM — dependências não formalizadas
-**CONFIRMADO NA AUDITORIA ANTERIOR.** Não foi identificado `requirements.txt` ou `pyproject.toml` no tree auditado.
 
-### F16 — MEDIUM — ausência de testes automatizados
-**CONFIRMADO NA AUDITORIA ANTERIOR.** Não foi identificada suíte automatizada.
+**PENDENTE.** Nenhum `requirements.txt`/`pyproject.toml` foi introduzido até M2.
 
-### F17 — MEDIUM — sem logging estruturado
-**CONFIRMADO.** Não existe infraestrutura formal de logging técnico no módulo principal.
+### F16 — MEDIUM — testes automatizados ausentes
 
-### F18 — MEDIUM — persistência/privacidade não formalizadas
-**CONFIRMADO.** As flags `save_audio` e `save_txt` existem na configuração, porém `process_audio()` chama `save_wav()` e `save_txt()` incondicionalmente.
+**PENDENTE.** Nenhuma suíte automatizada foi adicionada até M2.
+
+### F17 — MEDIUM — logging estruturado ausente
+
+**PENDENTE.**
+
+### F18/F25 — HIGH — flags de persistência não controlam persistência
+
+**PENDENTE.** `save_audio` e `save_txt` existem, mas o fluxo legado salva WAV/TXT incondicionalmente.
 
 ### F19 — MEDIUM — histórico baseado em dicionários
-**CONFIRMADO.** `history_items` contém dicionários; não há `DictationRecord`.
+
+**PENDENTE.** Sem `DictationRecord`.
 
 ### F20 — LOW — backup versionado
-**CONFIRMADO.** `ditado_f8_widget_backup_controle.py` permanece versionado.
+
+**PENDENTE DE REVISÃO.** Não remover antes da política de legacy.
 
 ### F21 — LOW — implementação legada paralela
-**CONFIRMADO.** `ditado_f8.py` ainda é chamado por `Iniciar Ditado F8.bat`.
+
+**PENDENTE DE REVISÃO.** `ditado_f8.py` ainda é referenciado pelo BAT.
 
 ### F22 — LOW — `keyboard.unhook_all()`
-**CONFIRMADO.** `unregister_hotkeys()` remove todos os hooks do módulo/processo em vez de uma referência própria.
+
+**PENDENTE.** O widget legado continua removendo todos os hooks do módulo/processo.
 
 ### F23 — LOW — conversão de áudio sem clamp
-**CONFIRMADO.** `save_wav()` converte com `np.int16(audio_data * 32767)` sem `np.clip`.
+
+**PENDENTE.** `np.int16(audio_data * 32767)` continua sem `np.clip`.
 
 ### F24 — ARCHITECTURAL — `process_audio()` concentra responsabilidades
-**CONFIRMADO.** Persistência, transcrição, parsing, histórico, clipboard, paste, status e erro continuam acoplados.
 
-### F25 — HIGH — flags de persistência não controlam persistência
-**CONFIRMADO.** `save_audio`/`save_txt` estão no config, mas não impedem criação dos arquivos.
+**PENDENTE.**
 
 ### F26 — MEDIUM — idempotência dos eventos
-**PENDENTE DE IMPLEMENTAÇÃO/TESTE.** Devem ser tratados explicitamente: `HOTKEY_DOWN` duplicado, `HOTKEY_UP` sem gravação, `CANCEL` duplicado, `STOP` após `CANCEL`, `CLOSE` durante `RECORDING`/`PROCESSING` e resultado tardio após shutdown.
+
+**PARCIALMENTE IMPLEMENTADO / NÃO TESTADO SUFICIENTEMENTE.**
+
+O dispatcher ignora eventos incompatíveis com vários estados, e o latch evita múltiplos `HOTKEY_DOWN` durante a mesma pressão física. Ainda devem ser testados explicitamente:
+
+- `HOTKEY_DOWN` duplicado;
+- `HOTKEY_UP` sem gravação;
+- `CANCEL` duplicado;
+- `STOP` após `CANCEL`;
+- `APPLICATION_CLOSE` durante `RECORDING`;
+- `APPLICATION_CLOSE` durante `PROCESSING`;
+- evento/resultado tardio depois de `SHUTTING_DOWN`/`CLOSED`.
 
 ---
 
 ## 11. Problemas críticos
 
-Ordem operacional:
+Prioridade operacional atual:
 
-1. corrigir fronteira `keyboard -> Tkinter`;
-2. criar event dispatch mínimo;
-3. introduzir máquina de estados;
-4. coordenar shutdown;
-5. implementar timeout/classificação do Whisper;
-6. implementar limite de gravação;
-7. recuperação do microfone;
-8. foco seguro da janela de destino;
-9. persistência coerente com `save_audio`/`save_txt`.
+1. concluir validação de M2 — dispatcher/FSM de entrada;
+2. coordenar shutdown e callbacks tardios;
+3. isolar RecordingService/AudioDeviceService;
+4. estruturar Whisper e resultados;
+5. timeout/classificação de falhas;
+6. limite máximo de gravação;
+7. recuperação de microfone/status de áudio;
+8. OutputController/foco seguro;
+9. persistência coerente com `save_audio`/`save_txt`;
+10. configuração/versionamento, logging, dependências e testes.
 
 ---
 
 ## 12. Melhorias implementadas
 
-Neste marco: somente infraestrutura Git e documentação inicial da branch `update`.
+### M1 — CONCLUÍDO
 
-Nenhuma alteração funcional foi feita no aplicativo.
+- branch `update` derivada de `main` correto;
+- handoff criado;
+- base e diff verificados;
+- sincronização local por fast-forward validada.
+
+### M2 — PARCIAL
+
+Implementado:
+
+- `ditado_f8_app.py`;
+- `AppState`;
+- `AppEvent`;
+- fila thread-safe;
+- event dispatch pelo loop Tk;
+- hotkey global apenas publica eventos;
+- botões/start/stop/cancel/close entram no dispatcher;
+- launcher VBS usa novo entrypoint;
+- launcher resolve o script pela própria pasta.
+
+Ainda não considerado concluído por falta dos testes funcionais restantes.
 
 ---
 
 ## 13. Melhorias pendentes
 
-### Fase A — Estabilização
-Thread safety, dispatcher, FSM, shutdown, timeout, semântica de falhas, limite de gravação, status de áudio, recuperação de dispositivo, foco/output e persistência coerente.
+### Para concluir M2
 
-### Fase B — Fundação
-ConfigService, `config_version`, parser isolado, identificadores únicos, `DictationRecord`, StorageService, OutputController, logging, dependências e testes.
+- testar modo toggle;
+- testar modo hold;
+- testar botão visual;
+- testar cancelamento;
+- testar idempotência básica;
+- analisar fechamento durante gravação/processamento antes de considerar shutdown seguro;
+- atualizar este handoff com resultados finais.
 
-### Fases C/D/E
-Produto, distribuição e recursos avançados somente depois da estabilização.
+### M3+
+
+Não iniciar antes da conclusão/aceite de M2, salvo correção estritamente necessária de regressão descoberta durante seus testes.
 
 ---
 
 ## 14. Testes executados
 
-### VERIFICADO REMOTAMENTE
+### VERIFICADO ESTATICAMENTE — IA/GitHub
 
-- metadata do repositório;
-- SHA atual de `main`;
-- criação da branch `update` a partir do SHA-base;
-- leitura do código principal;
-- leitura de `config.json`;
-- leitura dos launchers VBS/BAT;
-- revalidação estática dos achados prioritários F01, F02, F03, F04, F05, F06, F07, F08, F09, F10, F11, F12, F13, F18/F25, F21, F22, F23 e F24.
+- branch `update` e relação com `main`;
+- diff restrito aos arquivos esperados;
+- revisão de `ditado_f8_app.py`;
+- revisão dos launchers e código legado relevante.
 
-Nenhum teste funcional local foi executado pela IA.
+### TESTADO PELO USUÁRIO — Windows 11 / Python 3.10.6
+
+Comandos executados:
+
+```powershell
+python --version
+python -m py_compile .\ditado_f8_widget.py .\ditado_f8_app.py
+python -c "import ditado_f8_app; print('IMPORT_OK')"
+```
+
+Resultados:
+
+- Python `3.10.6`;
+- `py_compile`: PASS, sem erro reportado;
+- import: `IMPORT_OK`;
+- abertura com `python .\ditado_f8_app.py`: PASS;
+- fechamento normal clicando no `X`: PASS;
+- retorno ao prompt sem traceback no fechamento pelo `X`: PASS;
+- `git status` após os testes: working tree limpo.
+
+Um encerramento anterior por `Ctrl+C` gerou `KeyboardInterrupt`; não foi classificado como falha do aplicativo porque o teste correto pelo `X` foi repetido e passou.
 
 ---
 
 ## 15. Testes não executados
 
-**NÃO EXECUTADO:**
+**NÃO TESTADO após M2:**
 
-- `python -m py_compile` no checkout Windows do usuário;
-- execução do aplicativo;
 - F8 hold;
 - F8 toggle;
 - botão visual;
 - cancelamento;
-- microfone real;
-- Whisper real;
-- clipboard/auto-paste;
-- foco/restauração;
-- shutdown durante processing;
+- duplicidade/idempotência de eventos;
+- microfone real no novo fluxo;
+- Whisper real no novo fluxo;
+- clipboard/auto-paste no novo fluxo;
+- restauração de foco;
+- fechamento durante `RECORDING`;
+- fechamento durante `PROCESSING`;
+- callback/resultado tardio após shutdown;
 - timeout;
 - limite de gravação;
+- erros de executável/modelo;
 - testes automatizados.
 
 ---
 
 ## 16. Dependências
 
-Imports externos confirmados no núcleo:
+Imports externos confirmados no núcleo/refatoração:
 
 - `keyboard`;
 - `numpy`;
 - `pyperclip`;
 - `sounddevice`.
 
-Dependências Windows/Python padrão incluem Tkinter, `winsound`, `wave`, `subprocess` e `threading`.
+Biblioteca padrão relevante:
 
-Whisper é dependência externa local: `whisper-cli.exe` + modelo GGML.
+- Tkinter;
+- `queue`;
+- `enum`;
+- `wave`;
+- `threading`;
+- `subprocess`;
+- `winsound`.
+
+Whisper permanece dependência externa local: `whisper-cli.exe` + modelo GGML.
 
 ---
 
 ## 17. Configuração
 
-`config.json` contém atualmente:
+Chaves atuais:
 
 - `hotkey`;
 - `cancel_hotkey`;
@@ -371,40 +524,49 @@ Whisper é dependência externa local: `whisper-cli.exe` + modelo GGML.
 - `save_txt`;
 - `always_on_top`.
 
-Problemas: sem `config_version`, sem schema, caminhos absolutos e flags de persistência sem efeito real no fluxo atual.
+Pendências: `config_version`, schema/validação, caminhos portáveis, `max_record_seconds`, `transcription_timeout_seconds` e aplicação real das flags de persistência.
 
 ---
 
 ## 18. Inicialização
 
-Principal: `Iniciar Ditado F8 Widget.vbs`.
+Entry point atual da `update`:
 
-Alternativo/legado: `Iniciar Ditado F8.bat` -> `ditado_f8.py`.
+`ditado_f8_app.py`
 
-Ambos dependem atualmente de caminhos absolutos.
+Launcher silencioso:
+
+`Iniciar Ditado F8 Widget.vbs`
+
+O VBS resolve o script em relação à própria pasta, mas o Python ainda está em caminho absoluto específico do ambiente.
+
+Launcher alternativo/legado:
+
+`Iniciar Ditado F8.bat` -> `ditado_f8.py`.
 
 ---
 
 ## 19. Estratégia de armazenamento
 
-Atual:
+Atual, herdada do monólito:
 
-- WAV e TXT em `save_dir`;
-- base `YYYYMMDD_HHMMSS`;
+- WAV/TXT em `save_dir`;
+- timestamp `YYYYMMDD_HHMMSS`;
 - histórico somente em memória;
-- fluxo salva WAV/TXT sempre, independentemente das flags de configuração.
+- persistência WAV/TXT ainda ocorre mesmo quando flags deveriam desabilitá-la.
 
-Não mover/apagar arquivos existentes automaticamente durante a refatoração.
+Não mover ou apagar gravações existentes durante a refatoração.
 
 ---
 
 ## 20. Privacidade
 
 - processamento local/offline;
-- sem API de nuvem observada;
-- sem telemetria observada;
-- futuros logs não devem gravar texto integral por padrão;
-- persistência deve respeitar de fato `save_audio` e `save_txt`.
+- nenhuma telemetria introduzida em M1/M2;
+- nenhum upload de áudio/texto introduzido;
+- logs estruturados ainda não existem;
+- quando forem implementados, não devem registrar texto integral por padrão;
+- gravações/transcrições/modelos não devem ser adicionados ao Git.
 
 ---
 
@@ -412,79 +574,138 @@ Não mover/apagar arquivos existentes automaticamente durante a refatoração.
 
 Ainda não implementada formalmente.
 
-Eventos futuros mínimos: `application_start`, `application_shutdown`, `config_load`, `config_error`, `microphone_detection`, `recording_start`, `recording_stop`, `recording_cancel`, `recording_error`, `recording_limit_reached`, `whisper_start`, `whisper_success`, `whisper_empty`, `whisper_error`, `whisper_timeout`, `output_copy`, `output_paste`, `unexpected_exception`.
+Eventos futuros mínimos:
+
+`application_start`, `application_shutdown`, `config_load`, `config_error`, `microphone_detection`, `recording_start`, `recording_stop`, `recording_cancel`, `recording_error`, `recording_limit_reached`, `whisper_start`, `whisper_success`, `whisper_empty`, `whisper_error`, `whisper_timeout`, `output_copy`, `output_paste`, `unexpected_exception`.
 
 ---
 
 ## 22. Roadmap
 
-Prioridade atual: estabilização antes de features cosméticas, histórico persistente avançado, tray ou distribuição.
+### M1
 
-Divergência documental já confirmada: `PROXIMAS_FASES_DITADO_F8.md` declara thread safety completa da UI, porém o hotkey global ainda aciona métodos que executam operações Tk diretamente.
+`CONCLUÍDO / TESTADO PELO USUÁRIO`.
+
+### M2
+
+`PARCIAL`: dispatcher e FSM de entrada implementados, validação estática e teste de start/close concluídos; fluxo funcional de gravação ainda precisa de teste.
+
+### M3
+
+`NÃO INICIADO`: isolar `RecordingService` e `AudioDeviceService`.
+
+### M4+
+
+`NÃO INICIADOS`.
+
+Divergência documental histórica: documentos anteriores afirmaram thread safety completa; isso não deve ser considerado verdadeiro até que todos os caminhos assíncronos relevantes sejam auditados/validados.
 
 ---
 
 ## 23. Regras de Git
 
-- `main` é referência; não desenvolver diretamente nele;
+- `main` é referência e não deve receber commits deste trabalho;
 - implementação somente em `update`;
-- revisar diff antes de stage/commit;
-- não usar operações destrutivas sem autorização;
+- atualizar localmente por operações seguras/fast-forward quando aplicável;
+- revisar diff antes de commits;
+- não usar `git reset --hard`, `git clean -fd`, `git clean -fdx`, `git checkout -- .`, `git restore .` ou `push --force` sem autorização;
 - não usar `git add .` automaticamente;
-- um marco por commit lógico;
-- não commitar modelos, gravações, transcrições ou artefatos sensíveis.
+- não versionar modelos, gravações, transcrições ou arquivos sensíveis.
 
 ---
 
 ## 24. Regras de trabalho para futuras IAs
 
-1. Ler este handoff primeiro.
-2. Confirmar branch/HEAD/diff antes de alterar código.
-3. Confrontar documentação com implementação real.
-4. Não declarar teste executado sem evidência.
-5. Diferenciar IMPLEMENTADO, VERIFICADO ESTATICAMENTE, TESTADO PELO USUÁRIO, NÃO TESTADO e BLOQUEADO.
-6. Refatorar incrementalmente.
-7. Não remover legacy/backup sem verificação.
-8. Atualizar este documento após cada marco arquitetural.
-9. Informar SHA do último commit confirmado.
+1. Ler este handoff.
+2. Confirmar `main`, `update`, HEAD e diff real.
+3. Não refazer milestones implementados.
+4. Diferenciar `IMPLEMENTADO`, `VERIFICADO ESTATICAMENTE`, `TESTADO PELO USUÁRIO`, `NÃO TESTADO`, `BLOQUEADO`, `PARCIAL`.
+5. Não avançar estruturalmente enquanto o milestone anterior tiver regressão não analisada.
+6. Fornecer comandos PowerShell completos para validações locais.
+7. Não declarar teste manual executado sem saída do usuário.
+8. Atualizar este handoff ao fim dos marcos e quando o estado registrado ficar materialmente desatualizado.
+9. Informar SHAs completos.
+10. Preservar comportamento funcional e privacidade.
 
 ---
 
 ## 25. Últimos comandos/operações executados
 
-No GitHub remoto:
+### GitHub
 
-- leitura do metadata do repositório;
-- leitura do HEAD de `main`;
-- criação da branch `update` no SHA `c65fe91b60f2142afa3338f20874535610562e11`;
-- leitura de `ditado_f8_widget.py`;
-- leitura de `config.json`;
-- leitura dos launchers VBS/BAT;
-- criação deste documento.
+- comparação `main...update`;
+- confirmação de `main = c65fe91b60f2142afa3338f20874535610562e11`;
+- confirmação de `update = 261bcb2e124c12cd841bf2e09489ef2a74e39821` antes deste commit;
+- leitura de `ditado_f8_app.py`;
+- atualização deste handoff para refletir M2 parcial.
 
-No computador local do usuário nesta etapa: nenhum novo comando executado pela IA.
+### Local do usuário
+
+```powershell
+git fetch origin
+git merge --ff-only origin/update
+git status
+git rev-parse HEAD
+git log --oneline --decorate -n 5
+python --version
+python -m py_compile .\ditado_f8_widget.py .\ditado_f8_app.py
+python -c "import ditado_f8_app; print('IMPORT_OK')"
+python .\ditado_f8_app.py
+git status
+```
+
+Último estado local confirmado antes deste commit documental: `261bcb2e124c12cd841bf2e09489ef2a74e39821`, working tree limpo.
 
 ---
 
 ## 26. Próximo passo recomendado
 
-M2: corrigir a fronteira `keyboard -> Tkinter` e introduzir event dispatch mínimo, preservando comportamento observável.
+Concluir M2 antes de M3.
 
-Antes do commit funcional de M2:
+Próximo teste isolado: **modo toggle**, pois `config.json` estava configurado com `recording_mode = toggle` na auditoria.
 
-- revisar diff;
-- validar sintaxe/imports;
-- atualizar este handoff;
-- solicitar testes manuais locais de hold, toggle, botão e cancelamento.
+Critérios mínimos do teste:
+
+1. primeiro F8 inicia uma única gravação;
+2. segundo F8 encerra a mesma gravação;
+3. Whisper processa;
+4. texto reconhecido é disponibilizado;
+5. app retorna a estado pronto;
+6. nenhuma segunda gravação concorrente é iniciada;
+7. sem traceback no terminal.
+
+A colagem automática deve ser observada, mas falha de foco deve ser registrada separadamente de falha do dispatcher, pois F05 ainda está pendente.
+
+Após toggle, testar isoladamente hold, botão, cancelamento e idempotência básica antes de concluir M2.
 
 ---
 
 ## 27. Critério de conclusão do M1
 
-M1 está concluído somente quando houver evidência de:
+**ATENDIDO.**
 
-- branch remota `update` criada a partir do `main` correto;
-- `HANDOFF_DITADO_F8.md` presente na raiz;
-- commit documental exclusivo;
+- branch `update` criada do `main` correto;
+- handoff presente;
+- commit documental exclusivo criado;
 - `main` inalterada;
-- SHA do commit informado e validado.
+- SHA validado;
+- sincronização local por fast-forward confirmada.
+
+---
+
+## 28. Critério de conclusão do M2
+
+M2 só poderá ser marcado `CONCLUÍDO` quando houver evidência suficiente de:
+
+- boundary `keyboard -> dispatcher -> Tk` funcionando;
+- hold funcionando;
+- toggle funcionando;
+- botão visual funcionando;
+- cancelamento funcionando;
+- fechamento normal funcionando;
+- eventos incompatíveis/duplicados não corrompendo estado;
+- nenhum erro sintático/import;
+- diff revisado;
+- handoff atualizado com resultados reais.
+
+Shutdown durante processamento não deve ser confundido com o fechamento normal já testado; a coordenação completa continua como trabalho de estabilização e deve ser tratada antes de se declarar shutdown robusto.
