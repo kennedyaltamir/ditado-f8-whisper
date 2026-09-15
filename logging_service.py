@@ -37,6 +37,108 @@ def get_logger():
     return logging.getLogger(LOGGER_NAME)
 
 
+def _exception_event(logger, event, **fields):
+    logger.exception(
+        event,
+        extra={
+            "event": event,
+            "fields": fields,
+        },
+    )
+
+
+def _install_runtime_instrumentation(logger):
+    """Instrument output operations without recording dictated text."""
+
+    try:
+        import pyperclip
+
+        original_copy = pyperclip.copy
+        if not getattr(original_copy, "_ditado_logged", False):
+
+            def logged_copy(text):
+                text_length = len(text) if isinstance(text, str) else None
+                try:
+                    result = original_copy(text)
+                except Exception:
+                    _exception_event(
+                        logger,
+                        "output_copy_error",
+                        text_length=text_length,
+                        value_type=type(text).__name__,
+                    )
+                    raise
+
+                log_event(
+                    logger,
+                    "output_copy",
+                    text_length=text_length,
+                    value_type=type(text).__name__,
+                )
+                return result
+
+            logged_copy._ditado_logged = True
+            logged_copy._ditado_original = original_copy
+            pyperclip.copy = logged_copy
+
+            log_event(
+                logger,
+                "runtime_instrumentation_installed",
+                target="pyperclip.copy",
+            )
+    except Exception:
+        _exception_event(
+            logger,
+            "runtime_instrumentation_error",
+            target="pyperclip.copy",
+        )
+
+    try:
+        import keyboard
+
+        original_press_and_release = keyboard.press_and_release
+        if not getattr(original_press_and_release, "_ditado_logged", False):
+
+            def logged_press_and_release(hotkey, *args, **kwargs):
+                key_name = str(hotkey)
+                normalized = key_name.lower().replace(" ", "")
+                is_paste = normalized in ("ctrl+v", "control+v")
+
+                try:
+                    result = original_press_and_release(hotkey, *args, **kwargs)
+                except Exception:
+                    _exception_event(
+                        logger,
+                        "output_paste_error" if is_paste else "keyboard_action_error",
+                        keys=key_name,
+                    )
+                    raise
+
+                log_event(
+                    logger,
+                    "output_paste" if is_paste else "keyboard_action",
+                    level=logging.INFO if is_paste else logging.DEBUG,
+                    keys=key_name,
+                )
+                return result
+
+            logged_press_and_release._ditado_logged = True
+            logged_press_and_release._ditado_original = original_press_and_release
+            keyboard.press_and_release = logged_press_and_release
+
+            log_event(
+                logger,
+                "runtime_instrumentation_installed",
+                target="keyboard.press_and_release",
+            )
+    except Exception:
+        _exception_event(
+            logger,
+            "runtime_instrumentation_error",
+            target="keyboard.press_and_release",
+        )
+
+
 def configure_logging(base_dir):
     logger = get_logger()
     logger.setLevel(logging.DEBUG)
@@ -69,6 +171,7 @@ def configure_logging(base_dir):
 
     logger._ditado_configured = True
     log_event(logger, "logging_configured", log_path=log_path)
+    _install_runtime_instrumentation(logger)
     return logger
 
 
