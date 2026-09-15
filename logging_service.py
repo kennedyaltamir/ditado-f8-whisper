@@ -12,6 +12,7 @@ LOG_DIR_NAME = "logs"
 LOG_FILE_NAME = "ditado_f8.log"
 MAX_LOG_BYTES = 2 * 1024 * 1024
 LOG_BACKUP_COUNT = 5
+_LOG_CONTEXT = threading.local()
 
 
 class JsonEventFormatter(logging.Formatter):
@@ -176,6 +177,20 @@ def configure_logging(base_dir):
 
 
 def log_event(logger, event, level=logging.INFO, **fields):
+    if event == "whisper_empty":
+        _LOG_CONTEXT.whisper_empty_pending = True
+    elif event in ("whisper_success", "whisper_error"):
+        _LOG_CONTEXT.whisper_empty_pending = False
+    elif event == "transcript_available" and getattr(
+        _LOG_CONTEXT, "whisper_empty_pending", False
+    ):
+        event = "transcript_empty_display"
+        fields = dict(fields)
+        fields["text_length"] = 0
+        fields["empty"] = True
+        fields["display_placeholder"] = True
+        _LOG_CONTEXT.whisper_empty_pending = False
+
     logger.log(
         level,
         event,
